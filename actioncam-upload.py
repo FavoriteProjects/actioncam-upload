@@ -6,6 +6,18 @@ import os
 import logging
 import glob
 
+def uploadSequences(newSequences):
+    pass
+
+def mergeSequences(newSequences):
+    pass
+
+def analyzeSequences(sequences):
+    pass
+
+def analyzeFiles(files):
+    pass
+
 def analyzeFolder(folder):
     pattern = "%s/*.mp4" % folder
     logging.debug("Checking files matching pattern '%s'" % pattern)
@@ -42,6 +54,8 @@ def detectFolder(args):
 if __name__ == "__main__":
     folder = None
     files = None
+    sequences = None
+    newSequences = None
 
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
     parser.add_argument("--folder", required=False, help="Path to folder containing the video files")
@@ -54,5 +68,16 @@ if __name__ == "__main__":
     # Validate if the provided folder is valid, or try to automatically detect the folder
     (folder, files) = detectFolder(args)
 
+    # Analyze the files to identify continuous sequences
+    sequences = analyzeFiles(files)
+
+    # Check which sequences have already been uploaded and which ones are new
+    newSequences = analyzeSequences(sequences)
+
+    # Combine new sequences into individual files
+    mergeSequences(newSequences)
+
+    # Upload new sequences
+    uploadSequences(newSequences)
 
     logging.info("Done, exiting.")
