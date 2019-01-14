@@ -106,12 +106,22 @@ if __name__ == "__main__":
     newSequences = None
 
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
-    parser.add_argument("--folder", required=False, help="Path to folder containing the video files")
-    parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
+    parser.add_argument(
+        '-d', '--debug',
+        help="Print lots of debugging statements",
+        action="store_const", dest="loglevel", const=logging.DEBUG,
+        default=logging.WARNING,
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        help="Be verbose",
+        action="store_const", dest="loglevel", const=logging.INFO,
+    )
+    parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files")
     args = parser.parse_args()
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    if args.loglevel:
+        logging.basicConfig(level=args.loglevel)
 
     # Validate if the provided folder is valid, or try to automatically detect the folder
     (folder, files) = detectFolder(args)
