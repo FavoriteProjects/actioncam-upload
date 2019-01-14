@@ -5,6 +5,9 @@ import argparse
 import os
 import logging
 import glob
+import ffprobe
+from datetime import timedelta
+
 
 def uploadSequences(newSequences):
     pass
@@ -16,10 +19,55 @@ def analyzeSequences(sequences):
     pass
 
 def analyzeFiles(files):
-    pass
+    sequences = []
+    new_sequence = []
+    videoMetadata = None
+    duration = None
+    videos_by_creation_time = {}
+    creation_times = []
+    previous_end_time = None
+
+    for f in files:
+        logging.debug("Analyzing file '%s'" % f)
+        videoMetadata = ffprobe.probe(f)
+        duration = ffprobe.duration(videoMetadata)
+        creation_time = ffprobe.creation_time(videoMetadata)
+        logging.info("File '%s': Duration: '%.3f', Creation Time: '%s'" %(f, duration, creation_time))
+        creation_times.append(creation_time)
+        videos_by_creation_time[creation_time] = {"file_path": f, "duration": duration}
+
+    # Sort the creation dates
+    creation_times.sort()
+    logging.debug("creation_times: %s" % creation_times)
+
+    # Loop over the sorted creation times, identify adjacent videos to recreate full sequences
+    for ts in creation_times:
+        v = videos_by_creation_time[ts]
+        if not previous_end_time:
+            new_sequence = [{"file_path": v["file_path"], "duration": v["duration"], "creation_time": ts}]
+        else:
+            # Videos less than 30 seconds apart are considered part of the same sequence
+            if ts - previous_end_time < timedelta(seconds=30):
+                # Add this video to the current sequences
+                new_sequence.append({"file_path": v["file_path"], "duration": v["duration"], "creation_time": ts})
+            else:
+                # Save the previous sequence and start a new sequence
+                sequences.append(new_sequence)
+                new_sequence = [{"file_path": v["file_path"], "duration": v["duration"], "creation_time": ts}]
+        # Save this video's end time to compare with the next video's start time
+        previous_end_time = ts + timedelta(seconds=videos_by_creation_time[ts]["duration"])
+
+    # Store the last new sequence
+    if new_sequence:
+        sequences.append(new_sequence)
+    logging.info("Sequences identified: %d" % len(sequences))
+    logging.debug(sequences)
+
+    return sequences
 
 def analyzeFolder(folder):
-    pattern = "%s/*.mp4" % folder
+    #pattern = "%s/*.mp4" % folder
+    pattern = "%s/*.MOV" % folder
     logging.debug("Checking files matching pattern '%s'" % pattern)
     files = glob.glob(pattern)
     logging.info("There are %d files matching the pattern '%s':\n%s" % (len(files), pattern, '\n'.join(files)))
