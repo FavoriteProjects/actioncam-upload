@@ -9,13 +9,13 @@ import ffprobe
 from datetime import timedelta
 
 
-def uploadSequences(new_sequences):
+def upload_sequences(new_sequences):
     pass
 
-def mergeSequences(new_sequences):
+def merge_sequences(new_sequences):
     pass
 
-def analyzeSequences(sequences):
+def analyze_sequences(sequences):
     sequence_start_time = None
     new_sequences = []
 
@@ -46,10 +46,10 @@ def analyzeSequences(sequences):
     return new_sequences
 
 
-def analyzeFiles(files):
+def analyze_files(files):
     sequences = []
     new_sequence = []
-    videoMetadata = None
+    video_metadata = None
     duration = None
     videos_by_creation_time = {}
     creation_times = []
@@ -60,9 +60,9 @@ def analyzeFiles(files):
 
     for idx, f in enumerate(files):
         logging.info("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
-        videoMetadata = ffprobe.probe(f)
-        duration = ffprobe.duration(videoMetadata)
-        creation_time = ffprobe.creation_time(videoMetadata)
+        video_metadata = ffprobe.probe(f)
+        duration = ffprobe.duration(video_metadata)
+        creation_time = ffprobe.creation_time(video_metadata)
         logging.info("File '%s': Duration: '%.3f', Creation Time: '%s'" %(f, duration, creation_time))
         creation_times.append(creation_time)
         videos_by_creation_time[creation_time] = {"file_path": f, "duration": duration}
@@ -96,7 +96,7 @@ def analyzeFiles(files):
 
     return sequences
 
-def analyzeFolder(folder):
+def analyze_folder(folder):
     #pattern = "%s/*.mp4" % folder
     pattern = "%s/*.MOV" % folder
     logging.debug("Checking files matching pattern '%s'" % pattern)
@@ -105,21 +105,21 @@ def analyzeFolder(folder):
 
     return files if len(files) > 0 else None
 
-def detectFolder(args):
+def detect_folder(args):
     folder = None
     files = None
     if args.folder:
-        checkFolder = os.path.abspath(args.folder)
-        logging.debug("Checking if provided folder '%s' is valid." % checkFolder)
+        check_folder = os.path.abspath(args.folder)
+        logging.debug("Checking if provided folder '%s' is valid." % check_folder)
         # Check if provided folder is valid
-        if not os.path.exists(checkFolder):
+        if not os.path.exists(check_folder):
             logging.critical("Provided folder does not exist. Exiting...")
             sys.exit(1)
-        folder = checkFolder
+        folder = check_folder
         logging.info("The provided folder '%s' exists." % folder)
-        files = analyzeFolder(folder)
+        files = analyze_folder(folder)
         if not files:
-            logging.critical("The provided folder '%s' does not contain any processable video files. Exiting..." % checkFolder)
+            logging.critical("The provided folder '%s' does not contain any processable video files. Exiting..." % check_folder)
             sys.exit(1)
     else:
         # Try to identify the folder automatically
@@ -156,18 +156,18 @@ if __name__ == "__main__":
         logging.basicConfig(level=args.loglevel)
 
     # Validate if the provided folder is valid, or try to automatically detect the folder
-    (folder, files) = detectFolder(args)
+    (folder, files) = detect_folder(args)
 
     # Analyze the files to identify continuous sequences
-    sequences = analyzeFiles(files)
+    sequences = analyze_files(files)
 
     # Check which sequences have already been uploaded and which ones are new
-    new_sequences = analyzeSequences(sequences)
+    new_sequences = analyze_sequences(sequences)
 
     # Combine new sequences into individual files
-    mergeSequences(new_sequences)
+    merge_sequences(new_sequences)
 
     # Upload new sequences
-    uploadSequences(new_sequences)
+    upload_sequences(new_sequences)
 
     logging.info("Done, exiting.")
