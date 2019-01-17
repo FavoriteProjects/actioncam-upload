@@ -9,14 +9,42 @@ import ffprobe
 from datetime import timedelta
 
 
-def uploadSequences(newSequences):
+def uploadSequences(new_sequences):
     pass
 
-def mergeSequences(newSequences):
+def mergeSequences(new_sequences):
     pass
 
 def analyzeSequences(sequences):
-    pass
+    sequence_start_time = None
+    new_sequences = []
+
+    num_sequences = len(sequences)
+    logging.debug("Starting to analyze %d sequences." % num_sequences)
+
+    for idx, seq in enumerate(sequences):
+        logging.info("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
+        logging.debug(seq)
+        if len(seq) < 1:
+            raise Exception("No files in sequence (should never happen, something has gone wrong...)")
+
+        # Use the creation time of the first file in the sequence as start time for the entire sequence
+        sequence_start_time = seq[1]["creation_time"]
+
+        # Check if this sequence has already uploaded
+        logging.info("Checking if sequence %s has already been uploaded." % sequence_start_time)
+        #TODO: Check on YouTube
+
+        if False:
+            logging.info("This sequence %s is NOT new!" % sequence_start_time)
+        else:
+            logging.info("This sequence %s is new!" % sequence_start_time)
+            new_sequences.append(seq)
+
+    logging.info("There are %d new sequences, to upload:" % len(new_sequences))
+    logging.debug(new_sequences)
+    return new_sequences
+
 
 def analyzeFiles(files):
     sequences = []
@@ -31,7 +59,7 @@ def analyzeFiles(files):
     logging.debug("Starting to analyze %d video files." % num_files)
 
     for idx, f in enumerate(files):
-        logging.debug("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
+        logging.info("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
         videoMetadata = ffprobe.probe(f)
         duration = ffprobe.duration(videoMetadata)
         creation_time = ffprobe.creation_time(videoMetadata)
@@ -107,7 +135,7 @@ if __name__ == "__main__":
     folder = None
     files = None
     sequences = None
-    newSequences = None
+    new_sequences = None
 
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
     parser.add_argument(
@@ -134,12 +162,12 @@ if __name__ == "__main__":
     sequences = analyzeFiles(files)
 
     # Check which sequences have already been uploaded and which ones are new
-    newSequences = analyzeSequences(sequences)
+    new_sequences = analyzeSequences(sequences)
 
     # Combine new sequences into individual files
-    mergeSequences(newSequences)
+    mergeSequences(new_sequences)
 
     # Upload new sequences
-    uploadSequences(newSequences)
+    uploadSequences(new_sequences)
 
     logging.info("Done, exiting.")
