@@ -92,9 +92,10 @@ def detectFolder(args):
             sys.exit(1)
     else:
         # Try to identify the folder automatically
+        logging.debug("Start automatic folder detection.")
         # TODO
         if not folder:
-            logging.critical("Automatic folder detection failed. Exiting...")
+            logging.critical("Automatic folder detection failed. Exiting...\n(You can point to an explicit folder using the `--folder` argument).")
             sys.exit(1)
     logging.info("Continuing with the %d video files in folder '%s'." % (len(files), folder))
     return (folder, files)
