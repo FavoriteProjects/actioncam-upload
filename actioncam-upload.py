@@ -27,8 +27,11 @@ def analyzeFiles(files):
     creation_times = []
     previous_end_time = None
 
-    for f in files:
-        logging.debug("Analyzing file '%s'" % f)
+    num_files = len(files)
+    logging.debug("Starting to analyze %d video files." % num_files)
+
+    for idx, f in enumerate(files):
+        logging.debug("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
         videoMetadata = ffprobe.probe(f)
         duration = ffprobe.duration(videoMetadata)
         creation_time = ffprobe.creation_time(videoMetadata)
