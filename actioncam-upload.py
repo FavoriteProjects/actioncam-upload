@@ -7,13 +7,48 @@ import logging
 import glob
 import ffprobe
 from datetime import timedelta
+import subprocess as sp
 
 
 def upload_sequences(new_sequences):
     pass
 
 def merge_sequences(new_sequences):
-    pass
+    concat_string = None
+    file_path = None
+    num_sequences = len(new_sequences)
+    logging.debug("Preparing to merge %d sequences." % num_sequences)
+
+    for idx, seq in enumerate(new_sequences):
+        logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
+        logging.debug(seq)
+
+        # Output the list of video files to a temporary file, used as input by ffmpeg to concatenate
+        file_paths = [f["file_path"] for f in seq]
+        with open('/tmp/actioncam-upload-files.txt', 'w') as f:
+            print("file '%s'" % "'\nfile '".join(file_paths), file=f)
+
+        output_file = "/tmp/%s" % os.path.split(seq[0]["file_path"])[1] #Use the filename of the first file in this sequence
+
+        #ffmpeg -f concat -safe 0 -i /tmp/actioncam-upload-files.txt -c copy /tmp/output.mov
+        command = ["ffmpeg",
+                   "-y",
+                   "-f",  "concat",
+                   "-safe",  "0",
+                   "-i", "/tmp/actioncam-upload-files.txt",
+                   "-c", "copy",
+                   output_file
+                  ]
+
+        logging.info("Preparing to run ffmpeg concat command...")
+        logging.debug(command)
+        # Show ffmpeg output only if in INFO or DEBUG mode
+        if logging.getLevelName(logging.getLogger().getEffectiveLevel()) in ("INFO", "DEBUG"):
+            pipe = sp.Popen(command)
+        else:
+            pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
+        out, err = pipe.communicate()
+        logging.info("ffmpeg concat command done.")
 
 def analyze_sequences(sequences):
     sequence_start_time = None
