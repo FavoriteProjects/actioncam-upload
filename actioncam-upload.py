@@ -10,45 +10,60 @@ from datetime import timedelta
 import subprocess as sp
 
 
-def upload_sequences(new_sequences):
-    pass
+def upload_sequence(merged_file):
+    logging.info("Preparing to upload merged file \"%s\"." % merged_file)
 
-def merge_sequences(new_sequences):
+def merge_sequence(seq):
     concat_string = None
     file_path = None
+    logging.debug("Preparing to merge %d files." % len(seq))
+    logging.debug(seq)
+
+    # Output the list of video files to a temporary file, used as input by ffmpeg to concatenate
+    file_paths = [f["file_path"] for f in seq]
+    with open('/tmp/actioncam-upload-files.txt', 'w') as f:
+        print("file '%s'" % "'\nfile '".join(file_paths), file=f)
+
+    output_file = "/tmp/%s" % os.path.split(seq[0]["file_path"])[1] #Use the filename of the first file in this sequence
+
+    #ffmpeg -f concat -safe 0 -i /tmp/actioncam-upload-files.txt -c copy /tmp/output.mov
+    command = ["ffmpeg",
+               "-y",
+               "-f",  "concat",
+               "-safe",  "0",
+               "-i", "/tmp/actioncam-upload-files.txt",
+               "-c", "copy",
+               output_file
+              ]
+
+    logging.info("Preparing to run ffmpeg concat command...")
+    logging.debug(" ".join(command))
+    # Show ffmpeg output only if in INFO or DEBUG mode
+    if logging.getLevelName(logging.getLogger().getEffectiveLevel()) in ("INFO", "DEBUG"):
+        pipe = sp.Popen(command)
+    else:
+        pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
+    out, err = pipe.communicate()
+    logging.info("ffmpeg concat command done.")
+
+    return output_file
+
+def merge_and_upload_sequences(new_sequences):
     num_sequences = len(new_sequences)
-    logging.debug("Preparing to merge %d sequences." % num_sequences)
+    logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
     for idx, seq in enumerate(new_sequences):
+        # Combine this sequence into an individual file
         logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
-        logging.debug(seq)
+        merged_file = merge_sequence(seq)
 
-        # Output the list of video files to a temporary file, used as input by ffmpeg to concatenate
-        file_paths = [f["file_path"] for f in seq]
-        with open('/tmp/actioncam-upload-files.txt', 'w') as f:
-            print("file '%s'" % "'\nfile '".join(file_paths), file=f)
+        # Upload the merged sequence
+        logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
+        upload_sequence(merged_file)
 
-        output_file = "/tmp/%s" % os.path.split(seq[0]["file_path"])[1] #Use the filename of the first file in this sequence
-
-        #ffmpeg -f concat -safe 0 -i /tmp/actioncam-upload-files.txt -c copy /tmp/output.mov
-        command = ["ffmpeg",
-                   "-y",
-                   "-f",  "concat",
-                   "-safe",  "0",
-                   "-i", "/tmp/actioncam-upload-files.txt",
-                   "-c", "copy",
-                   output_file
-                  ]
-
-        logging.info("Preparing to run ffmpeg concat command...")
-        logging.debug(command)
-        # Show ffmpeg output only if in INFO or DEBUG mode
-        if logging.getLevelName(logging.getLogger().getEffectiveLevel()) in ("INFO", "DEBUG"):
-            pipe = sp.Popen(command)
-        else:
-            pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
-        out, err = pipe.communicate()
-        logging.info("ffmpeg concat command done.")
+        # Delete the merged file
+        logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
+        #TODO: Delete the merged file
 
 def analyze_sequences(sequences):
     sequence_start_time = None
@@ -199,10 +214,7 @@ if __name__ == "__main__":
     # Check which sequences have already been uploaded and which ones are new
     new_sequences = analyze_sequences(sequences)
 
-    # Combine new sequences into individual files
-    merge_sequences(new_sequences)
-
-    # Upload new sequences
-    upload_sequences(new_sequences)
+    # Combine new sequences into individual files and upload the combined files
+    merge_and_upload_sequences(new_sequences)
 
     logging.info("Done, exiting.")
