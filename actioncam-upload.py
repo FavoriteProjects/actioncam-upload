@@ -10,10 +10,10 @@ from datetime import timedelta
 import subprocess as sp
 
 
-def upload_sequence(merged_file):
+def upload_sequence(merged_file, dry_run):
     logging.info("Preparing to upload merged file \"%s\"." % merged_file)
 
-def merge_sequence(seq):
+def merge_sequence(seq, dry_run):
     concat_string = None
     file_path = None
     logging.debug("Preparing to merge %d files." % len(seq))
@@ -37,29 +37,34 @@ def merge_sequence(seq):
               ]
 
     logging.info("Preparing to run ffmpeg concat command...")
-    logging.debug(" ".join(command))
-    # Show ffmpeg output only if in INFO or DEBUG mode
-    if logging.getLevelName(logging.getLogger().getEffectiveLevel()) in ("INFO", "DEBUG"):
-        pipe = sp.Popen(command)
+
+    if dry_run:
+        logging.info("Program running in Dry Run mode, will not execute the ffmpeg concat command.")
+        logging.debug(" ".join(command))
     else:
-        pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
-    out, err = pipe.communicate()
-    logging.info("ffmpeg concat command done.")
+        logging.debug(" ".join(command))
+        # Show ffmpeg output only if in INFO or DEBUG mode
+        if logging.getLevelName(logging.getLogger().getEffectiveLevel()) in ("INFO", "DEBUG"):
+            pipe = sp.Popen(command)
+        else:
+            pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
+        out, err = pipe.communicate()
+        logging.info("ffmpeg concat command done.")
 
     return output_file
 
-def merge_and_upload_sequences(new_sequences):
+def merge_and_upload_sequences(new_sequences, dry_run):
     num_sequences = len(new_sequences)
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
     for idx, seq in enumerate(new_sequences):
         # Combine this sequence into an individual file
         logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
-        merged_file = merge_sequence(seq)
+        merged_file = merge_sequence(seq, dry_run)
 
         # Upload the merged sequence
         logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
-        upload_sequence(merged_file)
+        upload_sequence(merged_file, dry_run)
 
         # Delete the merged file
         logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
@@ -188,6 +193,8 @@ if __name__ == "__main__":
     new_sequences = None
 
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
+    parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files.")
+    parser.add_argument("-dr", "--dry-run", action='store_true', required=False, help="Do not combine files or upload.")
     parser.add_argument(
         '-d', '--debug',
         help="Print lots of debugging statements",
@@ -199,7 +206,6 @@ if __name__ == "__main__":
         help="Be verbose",
         action="store_const", dest="loglevel", const=logging.INFO,
     )
-    parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files")
     args = parser.parse_args()
 
     if args.loglevel:
@@ -215,6 +221,6 @@ if __name__ == "__main__":
     new_sequences = analyze_sequences(sequences)
 
     # Combine new sequences into individual files and upload the combined files
-    merge_and_upload_sequences(new_sequences)
+    merge_and_upload_sequences(new_sequences, args.dry_run)
 
     logging.info("Done, exiting.")
