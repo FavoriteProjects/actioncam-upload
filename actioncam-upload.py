@@ -92,7 +92,7 @@ def yt_get_authenticated_service(args):
     credentials = storage.get()
     if credentials is None or credentials.invalid:
         credentials = run_flow(flow, storage, args)
-    return build(API_SERVICE_NAME, API_VERSION, credentials = credentials)
+    return build(API_SERVICE_NAME, API_VERSION, credentials = credentials, cache_discovery=False)
 
 def yt_get_my_uploads_list():
     # Retrieve the contentDetails part of the channel resource for the
