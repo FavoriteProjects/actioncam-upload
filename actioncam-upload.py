@@ -141,7 +141,7 @@ def yt_list_my_uploaded_videos(uploads_playlist_id):
 def upload_sequence(merged_file, dry_run):
     logging.info("Preparing to upload merged file \"%s\"." % merged_file)
 
-def merge_sequence(seq, dry_run):
+def merge_sequence(seq, dry_run, logging_level):
     concat_string = None
     file_path = None
     logging.debug("Preparing to merge %d files." % len(seq))
@@ -172,7 +172,7 @@ def merge_sequence(seq, dry_run):
     else:
         logging.debug(" ".join(command))
         # Show ffmpeg output only if in INFO or DEBUG mode
-        if logging.getLevelName(logging.getLogger().getEffectiveLevel()) in ("INFO", "DEBUG"):
+        if logging_level in ("INFO", "DEBUG"):
             pipe = sp.Popen(command)
         else:
             pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
@@ -181,14 +181,14 @@ def merge_sequence(seq, dry_run):
 
     return output_file
 
-def merge_and_upload_sequences(new_sequences, dry_run):
+def merge_and_upload_sequences(new_sequences, dry_run, logging_level):
     num_sequences = len(new_sequences)
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
     for idx, seq in enumerate(new_sequences):
         # Combine this sequence into an individual file
         logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
-        merged_file = merge_sequence(seq, dry_run)
+        merged_file = merge_sequence(seq, dry_run, logging_level)
 
         # Upload the merged sequence
         logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
@@ -371,6 +371,6 @@ if __name__ == "__main__":
         if(len(new_sequences) > 0):
 
             # Combine new sequences into individual files and upload the combined files
-            merge_and_upload_sequences(new_sequences, args.dry_run)
+            merge_and_upload_sequences(new_sequences, args.dry_run, args.logging_level)
 
     logging.info("Done, exiting.")
