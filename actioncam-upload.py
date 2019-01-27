@@ -24,7 +24,11 @@ import httplib2
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google_auth_oauthlib.flow import InstalledAppFlow
+from oauth2client.file import Storage
+from oauth2client.client import flow_from_clientsecrets
+from oauth2client.tools import run_flow
+
+
 
 
 # Explicitly tell the underlying HTTP transport library not to retry, since
@@ -66,16 +70,28 @@ API_VERSION = 'v3'
 
 VALID_PRIVACY_STATUSES = ('public', 'private', 'unlisted')
 
+# This variable defines a message to display if the CLIENT_SECRETS_FILE is
+# missing.
+MISSING_CLIENT_SECRETS_MESSAGE = """
+WARNING: Please configure OAuth 2.0
 
+To make this sample run you will need to populate the client_secrets.json file
+found at:
+   %s
+with information from the APIs Console
+https://console.developers.google.com
 
-
-
-# Adapted from https://github.com/youtube/api-samples/blob/master/python/my_uploads.py
+For more information about the client_secrets.json file format, please visit:
+https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
+""" % os.path.abspath(os.path.join(os.path.dirname(__file__), CLIENT_SECRETS_FILE))
 
 # Authorize the request and store authorization credentials.
-def yt_get_authenticated_service():
-    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
-    credentials = flow.run_console()
+def yt_get_authenticated_service(args):
+    flow = flow_from_clientsecrets(CLIENT_SECRETS_FILE, scope=SCOPES, message=MISSING_CLIENT_SECRETS_MESSAGE)
+    storage = Storage("actioncam-upload-oauth2.json")
+    credentials = storage.get()
+    if credentials is None or credentials.invalid:
+        credentials = run_flow(flow, storage, args)
     return build(API_SERVICE_NAME, API_VERSION, credentials = credentials)
 
 def yt_get_my_uploads_list():
@@ -337,12 +353,14 @@ if __name__ == "__main__":
 
     if args.loglevel:
         logging.basicConfig(level=args.loglevel)
+        args.logging_level = logging.getLevelName(logging.getLogger().getEffectiveLevel())
+    args.noauth_local_webserver = True
 
     # Validate if the provided folder is valid, or try to automatically detect the folder
     (folder, files) = detect_folder(args)
 
     # Authenticate to YouTube
-    youtube = yt_get_authenticated_service()
+    youtube = yt_get_authenticated_service(args)
 
     # Analyze the files to identify continuous sequences
     sequences = analyze_files(files)
