@@ -9,6 +9,118 @@ import ffprobe
 from datetime import timedelta
 import subprocess as sp
 
+#import argparse
+#import httplib
+import httplib2
+# import os
+# import random
+# import time
+#
+# import google.oauth2.credentials
+# import google_auth_oauthlib.flow
+# from googleapiclient.http import MediaFileUpload
+
+
+
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+
+# Explicitly tell the underlying HTTP transport library not to retry, since
+# we are handling retry logic ourselves.
+httplib2.RETRIES = 1
+
+# Maximum number of times to retry before giving up.
+MAX_RETRIES = 10
+
+# Always retry when these exceptions are raised.
+# RETRIABLE_EXCEPTIONS = (httplib2.HttpLib2Error, IOError, httplib.NotConnected,
+#   httplib.IncompleteRead, httplib.ImproperConnectionState,
+#   httplib.CannotSendRequest, httplib.CannotSendHeader,
+#   httplib.ResponseNotReady, httplib.BadStatusLine)
+RETRIABLE_EXCEPTIONS = (httplib2.HttpLib2Error)
+
+# Always retry when an apiclient.errors.HttpError with one of these status
+# codes is raised.
+RETRIABLE_STATUS_CODES = [500, 502, 503, 504]
+
+# The CLIENT_SECRETS_FILE variable specifies the name of a file that contains
+# the OAuth 2.0 information for this application, including its client_id and
+# client_secret. You can acquire an OAuth 2.0 client ID and client secret from
+# the {{ Google Cloud Console }} at
+# {{ https://cloud.google.com/console }}.
+# Please ensure that you have enabled the YouTube Data API for your project.
+# For more information about using OAuth2 to access the YouTube Data API, see:
+#   https://developers.google.com/youtube/v3/guides/authentication
+# For more information about the client_secrets.json file format, see:
+#   https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
+CLIENT_SECRETS_FILE = 'client_secret.json'
+
+# This OAuth 2.0 access scope allows an application to upload files to the
+# authenticated user's YouTube channel, but doesn't allow other types of access.
+SCOPES = ['https://www.googleapis.com/auth/youtube.readonly',
+          'https://www.googleapis.com/auth/youtube.upload']
+API_SERVICE_NAME = 'youtube'
+API_VERSION = 'v3'
+
+VALID_PRIVACY_STATUSES = ('public', 'private', 'unlisted')
+
+
+
+
+
+# Adapted from https://github.com/youtube/api-samples/blob/master/python/my_uploads.py
+
+# Authorize the request and store authorization credentials.
+def yt_get_authenticated_service():
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
+    credentials = flow.run_console()
+    return build(API_SERVICE_NAME, API_VERSION, credentials = credentials)
+
+def yt_get_my_uploads_list():
+    # Retrieve the contentDetails part of the channel resource for the
+    # authenticated user's channel.
+    channels_response = youtube.channels().list(
+        mine=True,
+        part='contentDetails'
+    ).execute()
+
+    for channel in channels_response['items']:
+        # From the API response, extract the playlist ID that identifies the list
+        # of videos uploaded to the authenticated user's channel.
+        return channel['contentDetails']['relatedPlaylists']['uploads']
+    return None
+
+def yt_list_my_uploaded_videos(uploads_playlist_id):
+    uploaded_videos = []
+    # Retrieve the list of videos uploaded to the authenticated user's channel.
+    playlistitems_list_request = youtube.playlistItems().list(
+        playlistId=uploads_playlist_id,
+        part='snippet',
+        maxResults=5
+    )
+
+    logging.info('Videos in list %s' % uploads_playlist_id)
+    while playlistitems_list_request:
+        playlistitems_list_response = playlistitems_list_request.execute()
+
+        # Print information about each video.
+        for playlist_item in playlistitems_list_response['items']:
+            title = playlist_item['snippet']['title']
+            video_id = playlist_item['snippet']['resourceId']['videoId']
+            uploaded_videos.append(title)
+            logging.info("Title: '%s' (ID: %s)" % (title, video_id))
+
+        playlistitems_list_request = youtube.playlistItems().list_next(playlistitems_list_request, playlistitems_list_response)
+    return uploaded_videos
+
+
+
+
+
+
+
 
 def upload_sequence(merged_file, dry_run):
     logging.info("Preparing to upload merged file \"%s\"." % merged_file)
@@ -70,12 +182,29 @@ def merge_and_upload_sequences(new_sequences, dry_run):
         logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
         #TODO: Delete the merged file
 
+def get_sequence_title(creation_time):
+    return creation_time.strftime("%Y-%m-%d %H:%M:%S")
+
 def analyze_sequences(sequences):
-    sequence_start_time = None
+    sequence_title = None
     new_sequences = []
+    uploaded_videos = None
 
     num_sequences = len(sequences)
     logging.debug("Starting to analyze %d sequences." % num_sequences)
+
+    # Get the list of videos uploaded to YouTube
+    try:
+        uploads_playlist_id = yt_get_my_uploads_list()
+        if uploads_playlist_id:
+            uploaded_videos = yt_list_my_uploaded_videos(uploads_playlist_id)
+            logging.debug("Uploaded videos: %s" % uploaded_videos)
+        else:
+            logging.info('There is no uploaded videos playlist for this user.')
+    except HttpError as e:
+        logging.debug('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
+    # uploaded_videos = ['20190121 085007']
+    # logging.debug("Uploaded videos: %s" % uploaded_videos)
 
     for idx, seq in enumerate(sequences):
         logging.info("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
@@ -83,20 +212,18 @@ def analyze_sequences(sequences):
         if len(seq) < 1:
             raise Exception("No files in sequence (should never happen, something has gone wrong...)")
 
-        # Use the creation time of the first file in the sequence as start time for the entire sequence
-        sequence_start_time = seq[1]["creation_time"]
+        # Use the creation time of the first file in the sequence as name for the entire sequence
+        sequence_title = get_sequence_title(seq[0]["creation_time"])
 
         # Check if this sequence has already uploaded
-        logging.info("Checking if sequence %s has already been uploaded." % sequence_start_time)
-        #TODO: Check on YouTube
-
-        if False:
-            logging.info("This sequence %s is NOT new!" % sequence_start_time)
+        logging.info("Checking if sequence %s has already been uploaded." % sequence_title)
+        if sequence_title in uploaded_videos:
+            logging.info("This sequence %s is NOT new!" % sequence_title)
         else:
-            logging.info("This sequence %s is new!" % sequence_start_time)
+            logging.info("This sequence %s is new!" % sequence_title)
             new_sequences.append(seq)
 
-    logging.info("There are %d new sequences, to upload:" % len(new_sequences))
+    logging.info("There are %d new sequences to upload." % len(new_sequences))
     logging.debug(new_sequences)
     return new_sequences
 
@@ -214,13 +341,18 @@ if __name__ == "__main__":
     # Validate if the provided folder is valid, or try to automatically detect the folder
     (folder, files) = detect_folder(args)
 
+    # Authenticate to YouTube
+    youtube = yt_get_authenticated_service()
+
     # Analyze the files to identify continuous sequences
     sequences = analyze_files(files)
+    if(len(sequences) > 0):
 
-    # Check which sequences have already been uploaded and which ones are new
-    new_sequences = analyze_sequences(sequences)
+        # Check which sequences have already been uploaded and which ones are new
+        new_sequences = analyze_sequences(sequences)
+        if(len(new_sequences) > 0):
 
-    # Combine new sequences into individual files and upload the combined files
-    merge_and_upload_sequences(new_sequences, args.dry_run)
+            # Combine new sequences into individual files and upload the combined files
+            merge_and_upload_sequences(new_sequences, args.dry_run)
 
     logging.info("Done, exiting.")
