@@ -147,7 +147,7 @@ def merge_sequence(seq, dry_run, logging_level):
     logging.debug("Preparing to merge %d files." % len(seq))
     logging.debug(seq)
 
-    # Output the list of video files to a temporary file, used as input by ffmpeg to concatenate
+    # Output the list of video files to a temporary file, used as input by FFmpeg to concatenate
     file_paths = [f["file_path"] for f in seq]
     with open('/tmp/actioncam-upload-files.txt', 'w') as f:
         print("file '%s'" % "'\nfile '".join(file_paths), file=f)
@@ -164,19 +164,19 @@ def merge_sequence(seq, dry_run, logging_level):
                output_file
               ]
 
-    logging.info("Preparing to run ffmpeg concat command...")
+    logging.info("Preparing to run FFmpeg concat command...")
 
     logging.debug(" ".join(command))
     if dry_run:
-        logging.info("Not executing the ffmpeg concat command due to --dry-run parameter.")
+        logging.info("Not executing the FFmpeg concat command due to --dry-run parameter.")
     else:
-        # Show ffmpeg output only if in INFO or DEBUG mode
+        # Show FFmpeg output only if in INFO or DEBUG mode
         if logging_level in ("INFO", "DEBUG"):
             pipe = sp.Popen(command)
         else:
             pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
         out, err = pipe.communicate()
-        logging.info("ffmpeg concat command done.")
+        logging.info("FFmpeg concat command done.")
 
     return output_file
 
