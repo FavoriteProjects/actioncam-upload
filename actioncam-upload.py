@@ -181,7 +181,7 @@ def merge_sequence(seq, dry_run, logging_level):
 
     return output_file
 
-def merge_and_upload_sequences(new_sequences, dry_run, logging_level):
+def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net):
     num_sequences = len(new_sequences)
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
@@ -190,9 +190,12 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level):
         logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
         merged_file = merge_sequence(seq, dry_run, logging_level)
 
-        # Upload the merged sequence
-        logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
-        upload_sequence(merged_file, dry_run)
+        if no_net:
+            logging.debug("Not uploading sequence %d/%d due to --no-net parameter." % (idx + 1, num_sequences))
+        else:
+            # Upload the merged sequence
+            logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
+            upload_sequence(merged_file, dry_run)
 
         # Delete the merged file
         logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
@@ -201,26 +204,27 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level):
 def get_sequence_title(creation_time):
     return creation_time.strftime("%Y-%m-%d %H:%M:%S")
 
-def analyze_sequences(sequences):
+def analyze_sequences(sequences, no_net):
     sequence_title = None
     new_sequences = []
-    uploaded_videos = None
+    uploaded_videos = []
 
     num_sequences = len(sequences)
     logging.debug("Starting to analyze %d sequences." % num_sequences)
 
-    # Get the list of videos uploaded to YouTube
-    try:
-        uploads_playlist_id = yt_get_my_uploads_list()
-        if uploads_playlist_id:
-            uploaded_videos = yt_list_my_uploaded_videos(uploads_playlist_id)
-            logging.debug("Uploaded videos: %s" % uploaded_videos)
-        else:
-            logging.info('There is no uploaded videos playlist for this user.')
-    except HttpError as e:
-        logging.debug('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
-    # uploaded_videos = ['20190121 085007']
-    # logging.debug("Uploaded videos: %s" % uploaded_videos)
+    if no_net:
+        logging.debug("Not getting the list of videos uploaded to YouTube due to --no-net parameter.")
+    else:
+        # Get the list of videos uploaded to YouTube
+        try:
+            uploads_playlist_id = yt_get_my_uploads_list()
+            if uploads_playlist_id:
+                uploaded_videos = yt_list_my_uploaded_videos(uploads_playlist_id)
+                logging.debug("Uploaded videos: %s" % uploaded_videos)
+            else:
+                logging.info('There is no uploaded videos playlist for this user.')
+        except HttpError as e:
+            logging.debug('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
 
     for idx, seq in enumerate(sequences):
         logging.info("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
@@ -334,10 +338,12 @@ if __name__ == "__main__":
     files = None
     sequences = None
     new_sequences = None
+    youtube = None
 
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
     parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files.")
     parser.add_argument("-dr", "--dry-run", action='store_true', required=False, help="Do not combine files or upload.")
+    parser.add_argument("-nn", "--no-net", action='store_true', required=False, help="Do not use the network (no checking on YouTube or upload)")
     parser.add_argument(
         '-d', '--debug',
         help="Print lots of debugging statements",
@@ -359,18 +365,21 @@ if __name__ == "__main__":
     # Validate if the provided folder is valid, or try to automatically detect the folder
     (folder, files) = detect_folder(args)
 
-    # Authenticate to YouTube
-    youtube = yt_get_authenticated_service(args)
+    if args.no_net:
+        logging.debug("Not authenticating on YouTube due to --no-net parameter.")
+    else:
+        # Authenticate on YouTube
+        youtube = yt_get_authenticated_service(args)
 
     # Analyze the files to identify continuous sequences
     sequences = analyze_files(files)
     if(len(sequences) > 0):
 
         # Check which sequences have already been uploaded and which ones are new
-        new_sequences = analyze_sequences(sequences)
+        new_sequences = analyze_sequences(sequences, args.no_net)
         if(len(new_sequences) > 0):
 
             # Combine new sequences into individual files and upload the combined files
-            merge_and_upload_sequences(new_sequences, args.dry_run, args.logging_level)
+            merge_and_upload_sequences(new_sequences, args.dry_run, args.logging_level, args.no_net)
 
     logging.info("Done, exiting.")
