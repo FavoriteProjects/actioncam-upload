@@ -30,6 +30,8 @@ def upload_sequence(file_to_upload, sequence_title, youtube, args):
         yt_initialize_upload(file_to_upload, sequence_title, youtube, args)
     except HttpError as e:
         logging.error('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
+    except KeyboardInterrupt as e:
+        logging.warning("Aborting upload (KeyboardInterrupt)")
 
 def merge_sequence(seq, dry_run, logging_level):
     concat_string = None
