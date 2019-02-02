@@ -271,6 +271,7 @@ if __name__ == "__main__":
         logging.info("Not authenticating on YouTube due to --no-net parameter.")
     else:
         # Authenticate on YouTube
+        logging.info("Authenticating on YouTube...")
         youtube = yt_get_authenticated_service(args)
 
     # Analyze the files to identify continuous sequences
