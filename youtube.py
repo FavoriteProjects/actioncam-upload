@@ -1,20 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#import argparse
-#import httplib
+# Adapted from:
+#   https://github.com/youtube/api-samples/blob/master/python/my_uploads.py
+#   https://github.com/youtube/api-samples/blob/master/python/upload_video.py
+
 import httplib2
 import os
 import logging
-# import random
-# import time
-#
-# import google.oauth2.credentials
-# import google_auth_oauthlib.flow
+
 from googleapiclient.http import MediaFileUpload
-
-
-
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from oauth2client.file import Storage
