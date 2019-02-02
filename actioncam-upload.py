@@ -18,7 +18,7 @@ import httplib2
 #
 # import google.oauth2.credentials
 # import google_auth_oauthlib.flow
-# from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload
 
 
 
@@ -94,7 +94,7 @@ def yt_get_authenticated_service(args):
         credentials = run_flow(flow, storage, args)
     return build(API_SERVICE_NAME, API_VERSION, credentials = credentials, cache_discovery=False)
 
-def yt_get_my_uploads_list():
+def yt_get_my_uploads_list(youtube):
     # Retrieve the contentDetails part of the channel resource for the
     # authenticated user's channel.
     channels_response = youtube.channels().list(
@@ -108,7 +108,7 @@ def yt_get_my_uploads_list():
         return channel['contentDetails']['relatedPlaylists']['uploads']
     return None
 
-def yt_list_my_uploaded_videos(uploads_playlist_id):
+def yt_list_my_uploaded_videos(uploads_playlist_id, youtube):
     uploaded_videos = []
     # Retrieve the list of videos uploaded to the authenticated user's channel.
     playlistitems_list_request = youtube.playlistItems().list(
@@ -131,6 +131,75 @@ def yt_list_my_uploaded_videos(uploads_playlist_id):
         playlistitems_list_request = youtube.playlistItems().list_next(playlistitems_list_request, playlistitems_list_response)
     return uploaded_videos
 
+def yt_initialize_upload(merged_file, sequence_title, youtube, options):
+    tags = None
+    if options.keywords:
+        tags = options.keywords.split(',')
+
+    body=dict(
+        snippet=dict(
+            title="%s %s" % (options.title, sequence_title) if options.title else sequence_title,
+            description="%s %s" % (options.description, sequence_title) if options.description else sequence_title,
+            tags=tags,
+            categoryId=options.category
+        ),
+        status=dict(
+            privacyStatus=options.privacyStatus
+        )
+    )
+
+    # Call the API's videos.insert method to create and upload the video.
+    insert_request = youtube.videos().insert(
+        part=','.join(body.keys()),
+        body=body,
+        # The chunksize parameter specifies the size of each chunk of data, in
+        # bytes, that will be uploaded at a time. Set a higher value for
+        # reliable connections as fewer chunks lead to faster uploads. Set a lower
+        # value for better recovery on less reliable connections.
+        #
+        # Setting 'chunksize' equal to -1 in the code below means that the entire
+        # file will be uploaded in a single HTTP request. (If the upload fails,
+        # it will still be retried where it left off.) This is usually a best
+        # practice, but if you're using Python older than 2.6 or if you're
+        # running on App Engine, you should set the chunksize to something like
+        # 1024 * 1024 (1 megabyte).
+        media_body=MediaFileUpload(merged_file, chunksize=-1, resumable=True)
+    )
+
+    yt_resumable_upload(insert_request)
+
+# This method implements an exponential backoff strategy to resume a failed upload.
+def yt_resumable_upload(request):
+    response = None
+    error = None
+    retry = 0
+    while response is None:
+        try:
+            logging.info('Uploading file...')
+            status, response = request.next_chunk()
+            if response is not None:
+                if 'id' in response:
+                    logging.info('Video id "%s" was successfully uploaded.' % response['id'])
+                else:
+                    exit('The upload failed with an unexpected response: %s' % response)
+        except HttpError as e:
+            if e.resp.status in RETRIABLE_STATUS_CODES:
+                error = 'A retriable HTTP error %d occurred:\n%s' % (e.resp.status, e.content)
+            else:
+                raise
+        except RETRIABLE_EXCEPTIONS as e:
+            error = 'A retriable error occurred: %s' % e
+
+        if error is not None:
+            logging.error(error)
+            retry += 1
+            if retry > MAX_RETRIES:
+                exit('No longer attempting to retry.')
+
+            max_sleep = 2 ** retry
+            sleep_seconds = random.random() * max_sleep
+            logging.info('Sleeping %f seconds and then retrying...' % sleep_seconds)
+            time.sleep(sleep_seconds)
 
 
 
@@ -138,8 +207,15 @@ def yt_list_my_uploaded_videos(uploads_playlist_id):
 
 
 
-def upload_sequence(merged_file):
+
+
+def upload_sequence(merged_file, sequence_title, youtube, args):
     logging.info("Preparing to upload merged file \"%s\"." % merged_file)
+
+    try:
+        yt_initialize_upload(merged_file, sequence_title, youtube, args)
+    except HttpError as e:
+        logging.error('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
 
 def merge_sequence(seq, dry_run, logging_level):
     concat_string = None
@@ -180,7 +256,7 @@ def merge_sequence(seq, dry_run, logging_level):
 
     return output_file
 
-def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net):
+def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, youtube, args):
     num_sequences = len(new_sequences)
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
@@ -196,7 +272,8 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net):
         else:
             # Upload the merged sequence
             logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
-            upload_sequence(merged_file)
+            sequence_title = get_sequence_title(seq[0]["creation_time"])
+            upload_sequence(merged_file, sequence_title, youtube, args)
 
         # Delete the merged file
         logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
@@ -205,7 +282,7 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net):
 def get_sequence_title(creation_time):
     return creation_time.strftime("%Y-%m-%d %H:%M:%S")
 
-def analyze_sequences(sequences, no_net):
+def analyze_sequences(sequences, no_net, youtube):
     sequence_title = None
     new_sequences = []
     uploaded_videos = []
@@ -218,9 +295,9 @@ def analyze_sequences(sequences, no_net):
     else:
         # Get the list of videos uploaded to YouTube
         try:
-            uploads_playlist_id = yt_get_my_uploads_list()
+            uploads_playlist_id = yt_get_my_uploads_list(youtube)
             if uploads_playlist_id:
-                uploaded_videos = yt_list_my_uploaded_videos(uploads_playlist_id)
+                uploaded_videos = yt_list_my_uploaded_videos(uploads_playlist_id, youtube)
                 logging.debug("Uploaded videos: %s" % uploaded_videos)
             else:
                 logging.info('There is no uploaded videos playlist for this user.')
@@ -343,6 +420,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
     parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files.")
+    parser.add_argument("-t", '--title', help='Will be prepended to the video title')
+    parser.add_argument("-ds", '--description', help='Video description')
+    parser.add_argument("-c", '--category', help='Numeric video category. See https://developers.google.com/youtube/v3/docs/videoCategories/list')
+    parser.add_argument("-k", '--keywords', help='Video keywords, comma separated')
+    parser.add_argument("-p", '--privacyStatus', choices=VALID_PRIVACY_STATUSES, default='private', help='Video privacy status.')
     parser.add_argument("-dr", "--dry-run", action='store_true', required=False, help="Do not combine files or upload.")
     parser.add_argument("-nn", "--no-net", action='store_true', required=False, help="Do not use the network (no checking on YouTube or upload)")
     parser.add_argument(
@@ -377,10 +459,10 @@ if __name__ == "__main__":
     if(len(sequences) > 0):
 
         # Check which sequences have already been uploaded and which ones are new
-        new_sequences = analyze_sequences(sequences, args.no_net)
+        new_sequences = analyze_sequences(sequences, args.no_net, youtube)
         if(len(new_sequences) > 0):
 
             # Combine new sequences into individual files and upload the combined files
-            merge_and_upload_sequences(new_sequences, args.dry_run, args.logging_level, args.no_net)
+            merge_and_upload_sequences(new_sequences, args.dry_run, args.logging_level, args.no_net, youtube, args)
 
     logging.info("Done, exiting.")
