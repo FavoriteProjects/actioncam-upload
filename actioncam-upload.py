@@ -131,7 +131,7 @@ def yt_list_my_uploaded_videos(uploads_playlist_id, youtube):
         playlistitems_list_request = youtube.playlistItems().list_next(playlistitems_list_request, playlistitems_list_response)
     return uploaded_videos
 
-def yt_initialize_upload(merged_file, sequence_title, youtube, options):
+def yt_initialize_upload(file_to_upload, sequence_title, youtube, options):
     tags = None
     if options.keywords:
         tags = options.keywords.split(',')
@@ -163,7 +163,7 @@ def yt_initialize_upload(merged_file, sequence_title, youtube, options):
         # practice, but if you're using Python older than 2.6 or if you're
         # running on App Engine, you should set the chunksize to something like
         # 1024 * 1024 (1 megabyte).
-        media_body=MediaFileUpload(merged_file, chunksize=-1, resumable=True)
+        media_body=MediaFileUpload(file_to_upload, chunksize=-1, resumable=True)
     )
 
     yt_resumable_upload(insert_request)
@@ -209,11 +209,11 @@ def yt_resumable_upload(request):
 
 
 
-def upload_sequence(merged_file, sequence_title, youtube, args):
-    logging.info("Preparing to upload merged file \"%s\"." % merged_file)
+def upload_sequence(file_to_upload, sequence_title, youtube, args):
+    logging.info("Preparing to upload file \"%s\"." % file_to_upload)
 
     try:
-        yt_initialize_upload(merged_file, sequence_title, youtube, args)
+        yt_initialize_upload(file_to_upload, sequence_title, youtube, args)
     except HttpError as e:
         logging.error('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
 
@@ -261,9 +261,14 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, yo
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
     for idx, seq in enumerate(new_sequences):
-        # Combine this sequence into an individual file
-        logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
-        merged_file = merge_sequence(seq, dry_run, logging_level)
+        if len(seq) > 1:
+            # Combine this sequence into an individual file
+            logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
+            file_to_upload = merge_sequence(seq, dry_run, logging_level)
+        else:
+            # No need to merge, as there is only one file
+            logging.info("Sequence %d/%d has only one file, no need to merge files." % (idx + 1, num_sequences))
+            file_to_upload = seq[0]["file_path"]
 
         if no_net:
             logging.info("Not uploading sequence %d/%d due to --no-net parameter." % (idx + 1, num_sequences))
@@ -273,7 +278,7 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, yo
             # Upload the merged sequence
             logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
             sequence_title = get_sequence_title(seq[0]["creation_time"])
-            upload_sequence(merged_file, sequence_title, youtube, args)
+            upload_sequence(file_to_upload, sequence_title, youtube, args)
 
         # Delete the merged file
         logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
