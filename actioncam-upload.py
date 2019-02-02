@@ -138,7 +138,7 @@ def yt_list_my_uploaded_videos(uploads_playlist_id):
 
 
 
-def upload_sequence(merged_file, dry_run):
+def upload_sequence(merged_file):
     logging.info("Preparing to upload merged file \"%s\"." % merged_file)
 
 def merge_sequence(seq, dry_run, logging_level):
@@ -166,11 +166,10 @@ def merge_sequence(seq, dry_run, logging_level):
 
     logging.info("Preparing to run ffmpeg concat command...")
 
+    logging.debug(" ".join(command))
     if dry_run:
-        logging.info("Program running in Dry Run mode, will not execute the ffmpeg concat command.")
-        logging.debug(" ".join(command))
+        logging.info("Not executing the ffmpeg concat command due to --dry-run parameter.")
     else:
-        logging.debug(" ".join(command))
         # Show ffmpeg output only if in INFO or DEBUG mode
         if logging_level in ("INFO", "DEBUG"):
             pipe = sp.Popen(command)
@@ -191,11 +190,13 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net):
         merged_file = merge_sequence(seq, dry_run, logging_level)
 
         if no_net:
-            logging.debug("Not uploading sequence %d/%d due to --no-net parameter." % (idx + 1, num_sequences))
+            logging.info("Not uploading sequence %d/%d due to --no-net parameter." % (idx + 1, num_sequences))
+        elif dry_run:
+            logging.info("Not uploading sequence %d/%d due to --dry-run parameter." % (idx + 1, num_sequences))
         else:
             # Upload the merged sequence
             logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
-            upload_sequence(merged_file, dry_run)
+            upload_sequence(merged_file)
 
         # Delete the merged file
         logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
@@ -213,7 +214,7 @@ def analyze_sequences(sequences, no_net):
     logging.debug("Starting to analyze %d sequences." % num_sequences)
 
     if no_net:
-        logging.debug("Not getting the list of videos uploaded to YouTube due to --no-net parameter.")
+        logging.info("Not getting the list of videos uploaded to YouTube due to --no-net parameter.")
     else:
         # Get the list of videos uploaded to YouTube
         try:
@@ -366,7 +367,7 @@ if __name__ == "__main__":
     (folder, files) = detect_folder(args)
 
     if args.no_net:
-        logging.debug("Not authenticating on YouTube due to --no-net parameter.")
+        logging.info("Not authenticating on YouTube due to --no-net parameter.")
     else:
         # Authenticate on YouTube
         youtube = yt_get_authenticated_service(args)
