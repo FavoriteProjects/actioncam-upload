@@ -36,12 +36,13 @@ def upload_sequence(file_to_upload, sequence_title, youtube, args):
 def merge_sequence(seq, dry_run, logging_level):
     concat_string = None
     file_path = None
+    temp_file_ffmpeg = "/tmp/actioncam-upload-files.txt"
     logging.debug("Preparing to merge %d files." % len(seq))
     logging.debug(seq)
 
     # Output the list of video files to a temporary file, used as input by FFmpeg to concatenate
     file_paths = [f["file_path"] for f in seq]
-    with open('/tmp/actioncam-upload-files.txt', 'w') as f:
+    with open(temp_file_ffmpeg, 'w') as f:
         print("file '%s'" % "'\nfile '".join(file_paths), file=f)
 
     output_file = "/tmp/%s" % os.path.split(seq[0]["file_path"])[1] #Use the filename of the first file in this sequence
@@ -70,6 +71,11 @@ def merge_sequence(seq, dry_run, logging_level):
         out, err = pipe.communicate()
         logging.info("FFmpeg concat command done.")
 
+    logging.info("Deleting temporary FFmpeg merge file.")
+    if os.path.isfile(temp_file_ffmpeg):
+        os.remove(temp_file_ffmpeg)
+        logging.debug("File '%s' removed." % temp_file_ffmpeg)
+
     return output_file
 
 def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, youtube, args):
@@ -96,9 +102,12 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, yo
             sequence_title = get_sequence_title(seq[0]["creation_time"])
             upload_sequence(file_to_upload, sequence_title, youtube, args)
 
-        # Delete the merged file
-        logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
-        #TODO: Delete the merged file
+        if len(seq) > 1:
+            # Delete the merged file (if there is only one file, no temporary merged file was created, so no need to delete)
+            logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
+            if os.path.isfile(file_to_upload):
+                os.remove(file_to_upload)
+                logging.debug("File '%s' removed." % file_to_upload)
 
 def get_sequence_title(creation_time):
     return creation_time.strftime("%Y-%m-%d %H:%M:%S")
