@@ -78,7 +78,7 @@ def merge_sequence(seq, dry_run, logging_level):
 
     return output_file
 
-def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, youtube, args):
+def merge_and_upload_sequences(new_sequences, youtube, args):
     num_sequences = len(new_sequences)
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
@@ -86,15 +86,15 @@ def merge_and_upload_sequences(new_sequences, dry_run, logging_level, no_net, yo
         if len(seq) > 1:
             # Combine this sequence into an individual file
             logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
-            file_to_upload = merge_sequence(seq, dry_run, logging_level)
+            file_to_upload = merge_sequence(seq, args.dry_run, args.logging_level)
         else:
             # No need to merge, as there is only one file
             logging.info("Sequence %d/%d has only one file, no need to merge files." % (idx + 1, num_sequences))
             file_to_upload = seq[0]["file_path"]
 
-        if no_net:
+        if args.no_net:
             logging.info("Not uploading sequence %d/%d due to --no-net parameter." % (idx + 1, num_sequences))
-        elif dry_run:
+        elif args.dry_run:
             logging.info("Not uploading sequence %d/%d due to --dry-run parameter." % (idx + 1, num_sequences))
         else:
             # Upload the merged sequence
@@ -294,6 +294,6 @@ if __name__ == "__main__":
         if(len(new_sequences) > 0):
 
             # Combine new sequences into individual files and upload the combined files
-            merge_and_upload_sequences(new_sequences, args.dry_run, args.logging_level, args.no_net, youtube, args)
+            merge_and_upload_sequences(new_sequences, youtube, args)
 
     logging.info("Done, exiting.")
