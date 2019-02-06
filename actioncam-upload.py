@@ -6,6 +6,8 @@ import os
 import logging
 import glob
 import ffprobe
+import tempfile
+import shutil
 from datetime import timedelta
 import subprocess as sp
 
@@ -50,16 +52,15 @@ def merge_sequence(seq, dry_run, logging_level):
     #ffmpeg -f concat -safe 0 -i /tmp/actioncam-upload-files.txt -c copy /tmp/output.mov
     command = ["ffmpeg",
                "-y",
-               "-f",  "concat",
-               "-safe",  "0",
+               "-f", "concat",
+               "-safe", "0",
                "-i", "/tmp/actioncam-upload-files.txt",
                "-c", "copy",
                output_file
               ]
-
     logging.info("Preparing to run FFmpeg concat command...")
-
     logging.debug(" ".join(command))
+
     if dry_run:
         logging.info("Not executing the FFmpeg concat command due to --dry-run parameter.")
     else:
@@ -78,11 +79,59 @@ def merge_sequence(seq, dry_run, logging_level):
 
     return output_file
 
-def merge_and_upload_sequences(new_sequences, youtube, args):
+def compress_sequence(seq, tempdir, dry_run, logging_level):
+    logging.debug("Preparing to compress files into temporary directory '%s'." % tempdir)
+    logging.debug(seq)
+
+    for idx, f in enumerate(seq):
+        compressed_file = "%s/%s" % (tempdir, os.path.split(f["file_path"])[1])
+
+        # Reduce the resolution by 4 (1/2h 1/2w) and reduce framerate to 25 images/second
+        #ffmpeg -i 20190121_085007.MOV -vf "scale=iw/2:ih/2" -r 25 20190121_085007-div2-r25.mov
+        command = ["ffmpeg",
+                   "-i", f["file_path"],
+                   "-vf", "scale=iw/2:ih/2",
+                   "-r", "25",
+                   compressed_file
+                  ]
+        logging.info("Preparing to run FFmpeg compress command...")
+        logging.debug(" ".join(command))
+
+        if dry_run:
+            logging.info("Not executing the FFmpeg compress command due to --dry-run parameter.")
+        else:
+            # Show FFmpeg output only if in INFO or DEBUG mode
+            if logging_level in ("INFO", "DEBUG"):
+                pipe = sp.Popen(command)
+            else:
+                pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
+            out, err = pipe.communicate()
+            logging.info("FFmpeg compress command done.")
+            # Update the sequence information with the path to the new compressed file
+            f["file_path"] = compressed_file
+
+    if not dry_run:
+        logging.debug("Updated sequence with paths to the temporary compressed files:")
+        logging.debug(seq)
+    return seq
+
+def compress_merge_and_upload_sequences(new_sequences, youtube, args):
+    tempdir = None
     num_sequences = len(new_sequences)
     logging.info("Preparing to merge and upload %d sequences." % num_sequences)
 
     for idx, seq in enumerate(new_sequences):
+        if args.no_compression:
+            logging.info("Not compressing sequence %d/%d due to --no-compression parameter." % (idx + 1, num_sequences))
+        else:
+            # Create a temporary folder to hold the compressed files
+            # Do create (and delete) a new folder for each sequence, to save disk space
+            tempdir = tempfile.mkdtemp()
+            # Reduce resolution and framerate
+            logging.info("Compressing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
+            seq = compress_sequence(seq, tempdir, args.dry_run, args.logging_level)
+            # seq[] now contains the paths to the temporary compressed files
+
         if len(seq) > 1:
             # Combine this sequence into an individual file
             logging.info("Merging sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
@@ -108,6 +157,11 @@ def merge_and_upload_sequences(new_sequences, youtube, args):
             if os.path.isfile(file_to_upload):
                 os.remove(file_to_upload)
                 logging.debug("File '%s' removed." % file_to_upload)
+
+        if not args.no_compression:
+            # Delete the temporary folder that holds the compressed files
+            shutil.rmtree(tempdir)
+            logging.debug("The temporary folder with the compressed files for this sequence has been removed.")
 
 def get_sequence_title(creation_time):
     return creation_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -256,7 +310,8 @@ if __name__ == "__main__":
     parser.add_argument("-k", '--keywords', help='Video keywords, comma separated')
     parser.add_argument("-p", '--privacyStatus', choices=VALID_PRIVACY_STATUSES, default='private', help='Video privacy status.')
     parser.add_argument("-dr", "--dry-run", action='store_true', required=False, help="Do not combine files or upload.")
-    parser.add_argument("-nn", "--no-net", action='store_true', required=False, help="Do not use the network (no checking on YouTube or upload)")
+    parser.add_argument("-nn", "--no-net", action='store_true', required=False, help="Do not use the network (no checking on YouTube or upload).")
+    parser.add_argument("-nc", "--no-compression", action='store_true', required=False, help="Do not compress the files before uploading.")
     parser.add_argument(
         '-d', '--debug',
         help="Print lots of debugging statements",
@@ -294,6 +349,6 @@ if __name__ == "__main__":
         if(len(new_sequences) > 0):
 
             # Combine new sequences into individual files and upload the combined files
-            merge_and_upload_sequences(new_sequences, youtube, args)
+            compress_merge_and_upload_sequences(new_sequences, youtube, args)
 
     logging.info("Done, exiting.")
