@@ -295,13 +295,7 @@ def detect_folder(args):
     logging.info("Continuing with the %d video files in folder '%s'." % (len(files), folder))
     return (folder, files)
 
-if __name__ == "__main__":
-    folder = None
-    files = None
-    sequences = None
-    new_sequences = None
-    youtube = None
-
+def parse_args(args):
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
     parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files.")
     parser.add_argument("-t", '--title', help='Will be prepended to the video title')
@@ -323,7 +317,18 @@ if __name__ == "__main__":
         help="Be verbose",
         action="store_const", dest="loglevel", const=logging.INFO,
     )
-    args = parser.parse_args()
+    return parser.parse_args(args)
+
+
+if __name__ == "__main__":
+    folder = None
+    files = None
+    sequences = None
+    new_sequences = None
+    youtube = None
+
+    args = parse_args(sys.argv[1:])
+
 
     if args.loglevel:
         logging.basicConfig(level=args.loglevel)
