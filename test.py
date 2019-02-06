@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 
 # https://realpython.com/python-testing/
+
 # Running the tests:
 # $ python -m unittest -v test
+# Checking the coverage of the tests:
+# $ coverage run --include=actioncam-upload.py test.py && coverage html
 
 import unittest
 import sys

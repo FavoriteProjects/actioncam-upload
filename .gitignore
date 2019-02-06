@@ -2,3 +2,5 @@ temp/
 __pycache__/
 client_secret.json
 actioncam-upload-oauth2.json
+.coverage
+htmlcov/
