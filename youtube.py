@@ -101,11 +101,10 @@ def yt_list_my_uploaded_videos(uploads_playlist_id, youtube):
     # Retrieve the list of videos uploaded to the authenticated user's channel.
     playlistitems_list_request = youtube.playlistItems().list(
         playlistId=uploads_playlist_id,
-        part='snippet',
-        maxResults=5
+        part='snippet'
     )
 
-    logging.info('Videos in list %s' % uploads_playlist_id)
+    logging.debug('Videos in list %s' % uploads_playlist_id)
     while playlistitems_list_request:
         playlistitems_list_response = playlistitems_list_request.execute()
 
@@ -114,9 +113,10 @@ def yt_list_my_uploaded_videos(uploads_playlist_id, youtube):
             title = playlist_item['snippet']['title']
             video_id = playlist_item['snippet']['resourceId']['videoId']
             uploaded_videos.append(title)
-            logging.info("Title: '%s' (ID: %s)" % (title, video_id))
+            logging.debug("Title: '%s' (ID: %s)" % (title, video_id))
 
         playlistitems_list_request = youtube.playlistItems().list_next(playlistitems_list_request, playlistitems_list_response)
+    logging.info("There are %d already uploaded videos." % len(uploaded_videos))
     return uploaded_videos
 
 def yt_initialize_upload(file_to_upload, sequence_title, youtube, options):
