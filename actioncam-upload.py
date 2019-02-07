@@ -58,14 +58,14 @@ def merge_sequence(seq, dry_run, logging_level):
                "-c", "copy",
                output_file
               ]
-    logging.info("Preparing to run FFmpeg concat command...")
+    logging.debug("Running FFmpeg concat command...")
     logging.debug(" ".join(command))
 
     if dry_run:
         logging.info("Not executing the FFmpeg concat command due to --dry-run parameter.")
     else:
         # Show FFmpeg output only if in INFO or DEBUG mode
-        if logging_level in ("INFO", "DEBUG"):
+        if "DEBUG" == logging_level:
             pipe = sp.Popen(command)
         else:
             pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
@@ -79,7 +79,7 @@ def merge_sequence(seq, dry_run, logging_level):
 
     return output_file
 
-def compress_sequence(seq, tempdir, dry_run, logging_level):
+def compress_sequence(seq, tempdir, dry_run, logging_level, id_sequence, num_sequences):
     logging.debug("Preparing to compress files into temporary directory '%s'." % tempdir)
     logging.debug(seq)
 
@@ -94,14 +94,14 @@ def compress_sequence(seq, tempdir, dry_run, logging_level):
                    "-r", "25",
                    compressed_file
                   ]
-        logging.info("Preparing to run FFmpeg compress command...")
+        logging.info("Running FFmpeg compress command for file %d/%d of sequence %d/%d..." % (idx + 1, len(seq), id_sequence, num_sequences))
         logging.debug(" ".join(command))
 
         if dry_run:
             logging.info("Not executing the FFmpeg compress command due to --dry-run parameter.")
         else:
             # Show FFmpeg output only if in INFO or DEBUG mode
-            if logging_level in ("INFO", "DEBUG"):
+            if "DEBUG" == logging_level:
                 pipe = sp.Popen(command)
             else:
                 pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
@@ -118,7 +118,7 @@ def compress_sequence(seq, tempdir, dry_run, logging_level):
 def compress_merge_and_upload_sequences(new_sequences, youtube, args):
     tempdir = None
     num_sequences = len(new_sequences)
-    logging.info("Preparing to merge and upload %d sequences." % num_sequences)
+    logging.debug("Preparing to compress, merge and upload %d sequences." % num_sequences)
 
     for idx, seq in enumerate(new_sequences):
         if args.no_compression:
@@ -129,7 +129,7 @@ def compress_merge_and_upload_sequences(new_sequences, youtube, args):
             tempdir = tempfile.mkdtemp()
             # Reduce resolution and framerate
             logging.info("Compressing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
-            seq = compress_sequence(seq, tempdir, args.dry_run, args.logging_level)
+            seq = compress_sequence(seq, tempdir, args.dry_run, args.logging_level, idx + 1, num_sequences)
             # seq[] now contains the paths to the temporary compressed files
 
         if len(seq) > 1:
@@ -153,8 +153,8 @@ def compress_merge_and_upload_sequences(new_sequences, youtube, args):
 
         if len(seq) > 1:
             # Delete the merged file (if there is only one file, no temporary merged file was created, so no need to delete)
-            logging.info("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
             if os.path.isfile(file_to_upload):
+                logging.debug("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
                 os.remove(file_to_upload)
                 logging.debug("File '%s' removed." % file_to_upload)
 
@@ -189,7 +189,7 @@ def analyze_sequences(sequences, no_net, youtube):
             logging.debug('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
 
     for idx, seq in enumerate(sequences):
-        logging.info("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
+        logging.debug("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
         logging.debug(seq)
         if len(seq) < 1:
             raise Exception("No files in sequence (should never happen, something has gone wrong...)")
@@ -198,11 +198,10 @@ def analyze_sequences(sequences, no_net, youtube):
         sequence_title = get_sequence_title(seq[0]["creation_time"])
 
         # Check if this sequence has already uploaded
-        logging.info("Checking if sequence %s has already been uploaded." % sequence_title)
         if sequence_title in uploaded_videos:
-            logging.info("This sequence %s is NOT new!" % sequence_title)
+            logging.info("OLD sequence %2d/%d %s (contains %d files)." % (idx + 1, num_sequences, sequence_title, len(seq)))
         else:
-            logging.info("This sequence %s is new!" % sequence_title)
+            logging.info("NEW sequence %2d/%d %s (contains %d files)." % (idx + 1, num_sequences, sequence_title, len(seq)))
             new_sequences.append(seq)
 
     logging.info("There are %d new sequences to upload." % len(new_sequences))
@@ -220,14 +219,14 @@ def analyze_files(files):
     previous_end_time = None
 
     num_files = len(files)
-    logging.debug("Starting to analyze %d video files." % num_files)
+    logging.info("Starting to analyze %d video files..." % num_files)
 
     for idx, f in enumerate(files):
-        logging.info("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
+        logging.debug("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
         video_metadata = ffprobe.probe(f)
         duration = ffprobe.duration(video_metadata)
         creation_time = ffprobe.creation_time(video_metadata)
-        logging.info("File '%s': Duration: '%.3f', Creation Time: '%s'" %(f, duration, creation_time))
+        logging.debug("File '%s': Duration: '%.3f', Creation Time: '%s'" %(f, duration, creation_time))
         creation_times.append(creation_time)
         videos_by_creation_time[creation_time] = {"file_path": f, "duration": duration}
 
@@ -265,7 +264,8 @@ def analyze_folder(folder):
     pattern = "%s/*.MOV" % folder
     logging.debug("Checking files matching pattern '%s'" % pattern)
     files = glob.glob(pattern)
-    logging.info("There are %d files matching the pattern '%s':\n%s" % (len(files), pattern, '\n'.join(files)))
+    logging.info("There are %d files matching the pattern '%s'." % (len(files), pattern))
+    logging.debug('\n'.join(files))
 
     return files if len(files) > 0 else None
 
@@ -280,7 +280,7 @@ def detect_folder(args):
             logging.critical("Provided folder does not exist. Exiting...")
             sys.exit(1)
         folder = check_folder
-        logging.info("The provided folder '%s' exists." % folder)
+        logging.debug("The provided folder '%s' exists." % folder)
         files = analyze_folder(folder)
         if not files:
             logging.critical("The provided folder '%s' does not contain any processable video files. Exiting..." % check_folder)
@@ -292,7 +292,7 @@ def detect_folder(args):
         if not folder:
             logging.critical("Automatic folder detection failed. Exiting...\n(You can point to an explicit folder using the `--folder` argument).")
             sys.exit(1)
-    logging.info("Continuing with the %d video files in folder '%s'." % (len(files), folder))
+    logging.debug("Continuing with the %d files in folder '%s'." % (len(files), folder))
     return (folder, files)
 
 def parse_args(args):
