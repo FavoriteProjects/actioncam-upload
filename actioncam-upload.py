@@ -166,7 +166,7 @@ def compress_merge_and_upload_sequences(new_sequences, youtube, args):
 def get_sequence_title(creation_time):
     return creation_time.strftime("%Y-%m-%d %H:%M:%S")
 
-def analyze_sequences(sequences, no_net, youtube):
+def analyze_sequences(sequences, youtube, args):
     sequence_title = None
     new_sequences = []
     uploaded_videos = []
@@ -174,7 +174,7 @@ def analyze_sequences(sequences, no_net, youtube):
     num_sequences = len(sequences)
     logging.debug("Starting to analyze %d sequences." % num_sequences)
 
-    if no_net:
+    if args.no_net:
         logging.info("Not getting the list of videos uploaded to YouTube due to --no-net parameter.")
     else:
         # Get the list of videos uploaded to YouTube
@@ -199,10 +199,25 @@ def analyze_sequences(sequences, no_net, youtube):
 
         # Check if this sequence has already uploaded
         if sequence_title in uploaded_videos:
-            logging.info("OLD sequence %2d/%d %s (contains %d files)." % (idx + 1, num_sequences, sequence_title, len(seq)))
+            logging.info("OLD  sequence %2d/%d %s (%d files)." % (idx + 1, num_sequences, sequence_title, len(seq)))
         else:
-            logging.info("NEW sequence %2d/%d %s (contains %d files)." % (idx + 1, num_sequences, sequence_title, len(seq)))
-            new_sequences.append(seq)
+            is_new_sequence = True
+            # If bounds supplied, check if the duration of this sequence is within them
+            if args.min_length or args.max_length:
+                # Calculate duration of this sequence
+                sequence_length = 0
+                for idx2, vid in enumerate(seq):
+                    sequence_length += vid["duration"]
+                sequence_length /= 60 # Convert seconds in minutes
+                if args.min_length and sequence_length < args.min_length:
+                    logging.info("SKIP sequence %2d/%d %s (%d files), duration %.1f < --min-length=%d." % (idx + 1, num_sequences, sequence_title, len(seq), sequence_length, args.min_length))
+                    is_new_sequence = False
+                elif args.max_length and sequence_length > args.max_length:
+                    logging.info("SKIP sequence %2d/%d %s (%d files), duration %.1f > --max-length=%d." % (idx + 1, num_sequences, sequence_title, len(seq), sequence_length, args.max_length))
+                    is_new_sequence = False
+            if is_new_sequence:
+                logging.info("NEW  sequence %2d/%d %s (%d files)." % (idx + 1, num_sequences, sequence_title, len(seq)))
+                new_sequences.append(seq)
 
     logging.info("There are %d new sequences to upload." % len(new_sequences))
     logging.debug(new_sequences)
@@ -306,6 +321,8 @@ def parse_args(args):
     parser.add_argument("-dr", "--dry-run", action='store_true', required=False, help="Do not combine files or upload.")
     parser.add_argument("-nn", "--no-net", action='store_true', required=False, help="Do not use the network (no checking on YouTube or upload).")
     parser.add_argument("-nc", "--no-compression", action='store_true', required=False, help="Do not compress the files before uploading.")
+    parser.add_argument("-min", "--min-length", type=int, help="Do not consider sequences shorter than this number of minutes.")
+    parser.add_argument("-max", "--max-length", type=int, help="Do not consider sequences longer than this number of minutes.")
     parser.add_argument(
         '-d', '--debug',
         help="Print lots of debugging statements",
@@ -350,7 +367,7 @@ if __name__ == "__main__":
     if(len(sequences) > 0):
 
         # Check which sequences have already been uploaded and which ones are new
-        new_sequences = analyze_sequences(sequences, args.no_net, youtube)
+        new_sequences = analyze_sequences(sequences, youtube, args)
         if(len(new_sequences) > 0):
 
             # Combine new sequences into individual files and upload the combined files

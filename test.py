@@ -78,5 +78,19 @@ class TestArgparse(unittest.TestCase):
         parser = target.parse_args(['--privacyStatus', 'private'])
         self.assertEqual(parser.privacyStatus, 'private')
 
+    def test_arg_min_length_valid(self):
+        """
+        Test the --min-length argument with a valid value
+        """
+        parser = target.parse_args(['--min-length', '6'])
+        self.assertEqual(parser.min_length, 6)
+
+    def test_arg_max_length_valid(self):
+        """
+        Test the --max-length argument with a valid value
+        """
+        parser = target.parse_args(['--max-length', '48'])
+        self.assertEqual(parser.max_length, 48)
+
 if __name__ == '__main__':
     unittest.main()
