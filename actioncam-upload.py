@@ -32,6 +32,8 @@ def upload_sequence(file_to_upload, sequence_title, youtube, args):
         yt_initialize_upload(file_to_upload, sequence_title, youtube, args)
     except HttpError as e:
         logging.error('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
+        logging.critical("Exiting...")
+        exit(2)
     except KeyboardInterrupt as e:
         logging.warning("Aborting upload (KeyboardInterrupt)")
 
@@ -187,6 +189,8 @@ def analyze_sequences(sequences, youtube, args):
                 logging.info('There is no uploaded videos playlist for this user.')
         except HttpError as e:
             logging.debug('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
+            logging.critical("Exiting...")
+            exit(2)
 
     for idx, seq in enumerate(sequences):
         logging.debug("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
