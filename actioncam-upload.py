@@ -26,7 +26,7 @@ from youtube import yt_initialize_upload
 
 
 def upload_sequence(file_to_upload, sequence_title, youtube, args):
-    logging.info("Preparing to upload file \"%s\"." % file_to_upload)
+    logging.debug("Preparing to upload file \"%s\"." % file_to_upload)
 
     try:
         yt_initialize_upload(file_to_upload, sequence_title, youtube, args)
@@ -72,9 +72,9 @@ def merge_sequence(seq, dry_run, logging_level):
         else:
             pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
         out, err = pipe.communicate()
-        logging.info("FFmpeg concat command done.")
+        logging.debug("FFmpeg concat command done.")
 
-    logging.info("Deleting temporary FFmpeg merge file.")
+    logging.debug("Deleting temporary FFmpeg merge file.")
     if os.path.isfile(temp_file_ffmpeg):
         os.remove(temp_file_ffmpeg)
         logging.debug("File '%s' removed." % temp_file_ffmpeg)
@@ -108,7 +108,7 @@ def compress_sequence(seq, tempdir, dry_run, logging_level, id_sequence, num_seq
             else:
                 pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
             out, err = pipe.communicate()
-            logging.info("FFmpeg compress command done.")
+            logging.debug("FFmpeg compress command done.")
             # Update the sequence information with the path to the new compressed file
             f["file_path"] = compressed_file
 
