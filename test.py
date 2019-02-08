@@ -12,9 +12,38 @@ import unittest
 import sys
 import logging
 import datetime
+import tempfile
+import shutil
 
 sys.path.append('.')
 target = __import__("actioncam-upload")
+
+class TestDetectFolder(unittest.TestCase):
+    def test_detect_folder_explicit_path_valid(self):
+        """
+        Test the detect_folder() function, explicitly passing it a valid path
+        """
+        # Create a temporary folder with 5 dummy files, 3 of which with .MOV extension
+        tempdir = tempfile.mkdtemp()
+        (ignore, mov_file_1) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
+        (ignore, mov_file_2) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
+        (ignore, mov_file_3) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
+        tempfile.mkstemp(dir=tempdir)
+        tempfile.mkstemp(dir=tempdir)
+
+        # Run detect_folder()
+        args = target.parse_args(['--folder', tempdir])
+        (folder, files) = target.detect_folder(args)
+
+        # Validate the return of detect_folder()
+        self.assertEqual(folder, tempdir)
+        self.assertEqual(len(files), 3)
+        self.assertTrue(mov_file_1 in files)
+        self.assertTrue(mov_file_2 in files)
+        self.assertTrue(mov_file_3 in files)
+
+        # Delete the temporary folder and files
+        shutil.rmtree(tempdir)
 
 class TestGetSequenceTitle(unittest.TestCase):
     def test_get_sequence_title(self):
