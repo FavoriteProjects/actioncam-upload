@@ -4,15 +4,26 @@
 # https://realpython.com/python-testing/
 
 # Running the tests:
-# $ python -m unittest -v test
+# $ python -m unittest -v test
 # Checking the coverage of the tests:
-# $ coverage run --include=actioncam-upload.py test.py && coverage html
+# $ coverage run --include=actioncam-upload.py test.py && coverage html
 
 import unittest
 import sys
+import logging
+import datetime
+
 sys.path.append('.')
 target = __import__("actioncam-upload")
-import logging
+
+class TestGetSequenceTitle(unittest.TestCase):
+    def test_get_sequence_title(self):
+        """
+        Test the get_sequence_title() function
+        """
+        creation_time = datetime.datetime(2019, 1, 25, 16, 42, 21)
+        sequence_title = target.get_sequence_title(creation_time)
+        self.assertEqual(sequence_title, "2019-01-25 16:42:21")
 
 class TestArgparse(unittest.TestCase):
     def test_arg_dry_run(self):
