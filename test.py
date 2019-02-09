@@ -27,6 +27,15 @@ class TestAnalyzeFiles(unittest.TestCase):
         sequences = target.analyze_files([])
         self.assertEqual(sequences, [])
 
+    def test_analyze_files_invalid_files(self):
+        """
+        Test the analyze_files() function, passing list of non-existing files
+        (This scenario should not ever happen)
+        """
+        with self.assertRaises(Exception) as cm:
+            sequences = target.analyze_files([""])
+        self.assertEqual(str(cm.exception), "There is no file to analyze at ''")
+
 class TestDetectFolder(unittest.TestCase):
     def test_detect_folder_explicit_path_valid(self):
         """

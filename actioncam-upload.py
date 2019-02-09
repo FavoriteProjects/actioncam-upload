@@ -242,6 +242,8 @@ def analyze_files(files):
 
     for idx, f in enumerate(files):
         logging.debug("Analyzing file %d/%d: '%s'" % (idx + 1, num_files, f))
+        if not os.path.isfile(f):
+            raise Exception("There is no file to analyze at '%s'" % f)
         video_metadata = ffprobe.probe(f)
         duration = ffprobe.duration(video_metadata)
         creation_time = ffprobe.creation_time(video_metadata)
