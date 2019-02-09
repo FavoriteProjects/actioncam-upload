@@ -33,7 +33,7 @@ def upload_sequence(file_to_upload, sequence_title, youtube, args):
     except HttpError as e:
         logging.error('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
         logging.critical("Exiting...")
-        sys.exit(2)
+        sys.exit(13)
     except KeyboardInterrupt as e:
         logging.warning("Aborting upload (KeyboardInterrupt)")
 
@@ -190,7 +190,7 @@ def analyze_sequences(sequences, youtube, args):
         except HttpError as e:
             logging.debug('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
             logging.critical("Exiting...")
-            sys.exit(2)
+            sys.exit(14)
 
     for idx, seq in enumerate(sequences):
         logging.debug("Analyzing sequence %d/%d, which contains %d files." % (idx + 1, num_sequences, len(seq)))
@@ -297,20 +297,20 @@ def detect_folder(args):
         # Check if provided folder is valid
         if not os.path.exists(check_folder):
             logging.critical("Provided folder does not exist. Exiting...")
-            sys.exit(1)
+            sys.exit(10)
         folder = check_folder
         logging.debug("The provided folder '%s' exists." % folder)
         files = analyze_folder(folder)
         if not files:
             logging.critical("The provided folder '%s' does not contain any processable video files. Exiting..." % check_folder)
-            sys.exit(1)
+            sys.exit(11)
     else:
         # Try to identify the folder automatically
         logging.debug("Start automatic folder detection.")
         # TODO
         if not folder:
             logging.critical("Automatic folder detection failed. Exiting...\n(You can point to an explicit folder using the `--folder` argument).")
-            sys.exit(1)
+            sys.exit(12)
     logging.debug("Continuing with the %d files in folder '%s'." % (len(files), folder))
     return (folder, files)
 
