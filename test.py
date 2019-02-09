@@ -65,6 +65,29 @@ class TestDetectFolder(unittest.TestCase):
         self.assertEqual(the_exception.code, 10)
         logger.disabled = False
 
+    def test_detect_folder_explicit_path_no_video_files(self):
+        """
+        Test the detect_folder() function, explicitly passing it a valid path containing no video files
+        """
+        # Create a temporary folder with a non .MOV file
+        tempdir = tempfile.mkdtemp()
+        tempfile.mkstemp(dir=tempdir)
+
+        # Temporarily disable the logging output (we know this is "Critical")
+        logger = logging.getLogger()
+        logger.disabled = True
+
+        # Pass that now non-existing path to detect_folder()
+        args = target.parse_args(['--folder', tempdir])
+        with self.assertRaises(SystemExit) as cm:
+            (folder, files) = target.detect_folder(args)
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 11)
+        logger.disabled = False
+
+        # Delete the temporary folder and file
+        shutil.rmtree(tempdir)
+
 class TestGetSequenceTitle(unittest.TestCase):
     def test_get_sequence_title(self):
         """
