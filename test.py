@@ -18,6 +18,15 @@ import shutil
 sys.path.append('.')
 target = __import__("actioncam-upload")
 
+class TestAnalyzeFiles(unittest.TestCase):
+    def test_analyze_files_no_files(self):
+        """
+        Test the analyze_files() function, passing an empty list of files
+        (This scenario should not ever happen)
+        """
+        sequences = target.analyze_files([])
+        self.assertEqual(sequences, [])
+
 class TestDetectFolder(unittest.TestCase):
     def test_detect_folder_explicit_path_valid(self):
         """
