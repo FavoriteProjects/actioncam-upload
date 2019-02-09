@@ -88,6 +88,22 @@ class TestDetectFolder(unittest.TestCase):
         # Delete the temporary folder and file
         shutil.rmtree(tempdir)
 
+    def test_detect_folder_automatic_detection_fail(self):
+        """
+        Test the detect_folder() function, failing at automatic discovery
+        """
+        # Temporarily disable the logging output (we know this is "Critical")
+        logger = logging.getLogger()
+        logger.disabled = True
+
+        # Pass that now non-existing path to detect_folder()
+        args = target.parse_args([])
+        with self.assertRaises(SystemExit) as cm:
+            (folder, files) = target.detect_folder(args)
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 12)
+        logger.disabled = False
+
 class TestGetSequenceTitle(unittest.TestCase):
     def test_get_sequence_title(self):
         """
