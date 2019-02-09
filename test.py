@@ -45,6 +45,26 @@ class TestDetectFolder(unittest.TestCase):
         # Delete the temporary folder and files
         shutil.rmtree(tempdir)
 
+    def test_detect_folder_explicit_path_invalid(self):
+        """
+        Test the detect_folder() function, explicitly passing it a invalid path
+        """
+        # Create a temporary folder and delete it directly
+        tempdir = tempfile.mkdtemp()
+        shutil.rmtree(tempdir)
+
+        # Temporarily disable the logging output (we know this is "Critical")
+        logger = logging.getLogger()
+        logger.disabled = True
+
+        # Pass that now non-existing path to detect_folder()
+        args = target.parse_args(['--folder', tempdir])
+        with self.assertRaises(SystemExit) as cm:
+            (folder, files) = target.detect_folder(args)
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 10)
+        logger.disabled = False
+
 class TestGetSequenceTitle(unittest.TestCase):
     def test_get_sequence_title(self):
         """
