@@ -74,11 +74,23 @@ class TestMergeSequence(unittest.TestCase):
         file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
         self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
-    def test_merge_sequence_ffmpeg(self):
+    def test_merge_sequence_ffmpeg_verbose(self):
         """
-        Test the merge_sequence() function, running the FFmpeg merge command
+        Test the merge_sequence() function, running the FFmpeg merge command with --verbose
         """
         args = target.parse_args(['--verbose'])
+        file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
+        self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
+
+    def test_merge_sequence_ffmpeg_debug(self):
+        """
+        Test the merge_sequence() function, running the FFmpeg merge command with --debug
+        This will cause the output of ffmpeg (including the following error
+        message) to be displayed in the output of the test suite, this is NOT a problem:
+            Impossible to open '/tmp/vids/20190121_085007.MOV'
+            /tmp/actioncam-upload-files.txt: No such file or directory
+        """
+        args = target.parse_args(['--debug'])
         file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
         self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
