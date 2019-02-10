@@ -380,6 +380,7 @@ class TestArgparse(unittest.TestCase):
         """
         parser = target.parse_args(['--debug'])
         self.assertEqual(parser.loglevel, logging.DEBUG)
+        self.assertEqual(parser.logging_level, "DEBUG")
 
     def test_arg_debug_shorthand(self):
         """
@@ -387,6 +388,7 @@ class TestArgparse(unittest.TestCase):
         """
         parser = target.parse_args(['-d'])
         self.assertEqual(parser.loglevel, logging.DEBUG)
+        self.assertEqual(parser.logging_level, "DEBUG")
 
     def test_arg_verbose(self):
         """
@@ -394,6 +396,7 @@ class TestArgparse(unittest.TestCase):
         """
         parser = target.parse_args(['--verbose'])
         self.assertEqual(parser.loglevel, logging.INFO)
+        self.assertEqual(parser.logging_level, "INFO")
 
     def test_arg_verbose_shorthand(self):
         """
@@ -401,6 +404,7 @@ class TestArgparse(unittest.TestCase):
         """
         parser = target.parse_args(['-v'])
         self.assertEqual(parser.loglevel, logging.INFO)
+        self.assertEqual(parser.logging_level, "INFO")
 
     def test_arg_privacyStatus_valid(self):
         """
