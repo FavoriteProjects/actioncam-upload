@@ -57,6 +57,23 @@ class TestAnalyzeSequences(unittest.TestCase):
                 for data in ["creation_time", "duration", "file_path"]:
                     self.assertEqual(files[data], sample_sequences[idx][idx2][data])
 
+    def test_analyze_sequences_length_restriction(self):
+        """
+        Test the analyze_sequences() function, passing a valid sequences array and both --min-length and --max-length
+        Only one sequence should be identified as new
+        """
+        args = target.parse_args(['--no-net', '--min-length', '15', '--max-length', '19'])
+        youtube = None
+        new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
+        # Confirm only one sequence were identified as new, the first of the sample sequences
+        self.assertEqual(len(new_sequences), 1)
+        # Check the content of each sequence
+        for idx, seq in enumerate(new_sequences):
+            self.assertEqual(len(seq), len(sample_sequences[0]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[0][idx2][data])
+
 class TestIdentifySequences(unittest.TestCase):
     def test_identify_sequences_valid(self):
         """
