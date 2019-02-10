@@ -39,6 +39,24 @@ sample_sequences = [
     ]
 ]
 
+class TestAnalyzeSequences(unittest.TestCase):
+    def test_analyze_sequences_no_net(self):
+        """
+        Test the analyze_sequences() function, passing a valid sequences array and only --no-net
+        This means all the sequences should be identified as new
+        """
+        args = target.parse_args(['--no-net'])
+        youtube = None
+        new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
+        # Confirm 3 sequences were identified as new
+        self.assertEqual(len(new_sequences), 3)
+        # Check the content of each sequence
+        for idx, seq in enumerate(new_sequences):
+            self.assertEqual(len(seq), len(sample_sequences[idx]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[idx][idx2][data])
+
 class TestIdentifySequences(unittest.TestCase):
     def test_identify_sequences_valid(self):
         """
