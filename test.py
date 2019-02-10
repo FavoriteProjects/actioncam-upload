@@ -66,11 +66,19 @@ class TestCompressMergeAndUploadSequences(unittest.TestCase):
         # their returns), just confirming no Exception is thrown.
 
 class TestMergeSequence(unittest.TestCase):
-    def test_merge_sequence(self):
+    def test_merge_sequence_dry_run(self):
         """
-        Test the merge_sequence() function
+        Test the merge_sequence() function with --dry-run (doesn't run the ffmpeg command)
         """
         args = target.parse_args(['--dry-run', '--verbose'])
+        file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
+        self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
+
+    def test_merge_sequence_ffmpeg(self):
+        """
+        Test the merge_sequence() function, running the FFmpeg merge command
+        """
+        args = target.parse_args(['--verbose'])
         file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
         self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
