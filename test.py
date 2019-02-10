@@ -39,6 +39,21 @@ sample_sequences = [
     ]
 ]
 
+class TestCompressSequence(unittest.TestCase):
+    def test_compress_sequence_dry_run(self):
+        """
+        Test the compress_sequence() function with --dry-run
+        Nothing should change to the sequence
+        """
+        args = target.parse_args(['--dry-run', '--verbose'])
+        tempdir = tempfile.mkdtemp()
+        # Call the function with the first sequence from sample_sequences
+        seq = target.compress_sequence(sample_sequences[0], tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
+        # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
+        for idx, files in enumerate(seq):
+            for data in ["creation_time", "duration", "file_path"]:
+                self.assertEqual(files[data], sample_sequences[0][idx][data])
+
 class TestAnalyzeSequences(unittest.TestCase):
     def test_analyze_sequences_no_net(self):
         """
