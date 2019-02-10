@@ -14,6 +14,7 @@ import logging
 import datetime
 import tempfile
 import shutil
+import os
 
 sys.path.append('.')
 target = __import__("actioncam-upload")
@@ -38,6 +39,15 @@ sample_sequences = [
         {'duration': 286.0, 'file_path': '/tmp/vids/20190129_083826.MOV', 'creation_time': datetime.datetime(2019, 1, 29, 8, 38, 27)}
     ]
 ]
+
+class TestMergeSequence(unittest.TestCase):
+    def test_merge_sequence(self):
+        """
+        Test the merge_sequence() function
+        """
+        args = target.parse_args(['--dry-run', '--verbose'])
+        file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
+        self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
 class TestCompressSequence(unittest.TestCase):
     def test_compress_sequence_dry_run(self):
