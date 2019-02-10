@@ -319,7 +319,7 @@ def detect_folder(args):
     logging.debug("Continuing with the %d files in folder '%s'." % (len(files), folder))
     return (folder, files)
 
-def parse_args(args):
+def parse_args(arguments):
     parser = argparse.ArgumentParser(description="Automatically upload videos from an Action Cam to YouTube.")
     parser.add_argument("-f", "--folder", required=False, help="Path to folder containing the video files.")
     parser.add_argument("-t", '--title', help='Will be prepended to the video title')
@@ -343,7 +343,15 @@ def parse_args(args):
         help="Be verbose",
         action="store_const", dest="loglevel", const=logging.INFO,
     )
-    return parser.parse_args(args)
+    args = parser.parse_args(arguments)
+
+    # Add some more arguments
+    if args.loglevel:
+        logging.basicConfig(level=args.loglevel)
+        args.logging_level = logging.getLevelName(logging.getLogger().getEffectiveLevel())
+    args.noauth_local_webserver = True
+
+    return args
 
 
 if __name__ == "__main__":
@@ -353,13 +361,8 @@ if __name__ == "__main__":
     new_sequences = None
     youtube = None
 
+    # Parse the provided command-line arguments
     args = parse_args(sys.argv[1:])
-
-
-    if args.loglevel:
-        logging.basicConfig(level=args.loglevel)
-        args.logging_level = logging.getLevelName(logging.getLogger().getEffectiveLevel())
-    args.noauth_local_webserver = True
 
     # Validate if the provided folder is valid, or try to automatically detect the folder
     (folder, files) = detect_folder(args)
