@@ -227,15 +227,11 @@ def analyze_sequences(sequences, youtube, args):
     logging.debug(new_sequences)
     return new_sequences
 
-
 def analyze_files(files):
-    sequences = []
-    new_sequence = []
     video_metadata = None
     duration = None
     videos_by_creation_time = {}
     creation_times = []
-    previous_end_time = None
 
     num_files = len(files)
     logging.info("Starting to analyze %d video files..." % num_files)
@@ -250,6 +246,13 @@ def analyze_files(files):
         logging.debug("File '%s': Duration: '%.3f', Creation Time: '%s'" %(f, duration, creation_time))
         creation_times.append(creation_time)
         videos_by_creation_time[creation_time] = {"file_path": f, "duration": duration}
+
+    return identify_sequences(videos_by_creation_time, creation_times)
+
+def identify_sequences(videos_by_creation_time, creation_times):
+    sequences = []
+    new_sequence = []
+    previous_end_time = None
 
     # Sort the creation dates
     creation_times.sort()

@@ -18,6 +18,70 @@ import shutil
 sys.path.append('.')
 target = __import__("actioncam-upload")
 
+
+sample_sequences = [
+    [
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190121_085007.MOV', 'creation_time': datetime.datetime(2019, 1, 21, 8, 50, 7)},
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190121_085508.MOV', 'creation_time': datetime.datetime(2019, 1, 21, 8, 55, 8)},
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190121_090008.MOV', 'creation_time': datetime.datetime(2019, 1, 21, 9, 0, 8)},
+        {'duration': 216.75, 'file_path': '/tmp/vids/20190121_090508.MOV', 'creation_time': datetime.datetime(2019, 1, 21, 9, 5, 8)}
+    ],
+    [
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190125_162220.MOV', 'creation_time': datetime.datetime(2019, 1, 25, 16, 22, 20)},
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190125_162721.MOV', 'creation_time': datetime.datetime(2019, 1, 25, 16, 27, 21)},
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190125_163221.MOV', 'creation_time': datetime.datetime(2019, 1, 25, 16, 32, 21)},
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190125_163721.MOV', 'creation_time': datetime.datetime(2019, 1, 25, 16, 37, 21)}
+    ],
+    [
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190129_082825.MOV', 'creation_time': datetime.datetime(2019, 1, 29, 8, 28, 26)},
+        {'duration': 300.0, 'file_path': '/tmp/vids/20190129_083327.MOV', 'creation_time': datetime.datetime(2019, 1, 29, 8, 33, 27)},
+        {'duration': 286.0, 'file_path': '/tmp/vids/20190129_083826.MOV', 'creation_time': datetime.datetime(2019, 1, 29, 8, 38, 27)}
+    ]
+]
+
+class TestIdentifySequences(unittest.TestCase):
+    def test_identify_sequences_valid(self):
+        """
+        Test the identify_sequences() function, passing a valid array of files
+        """
+        videos_by_creation_time = {
+            datetime.datetime(2019, 1, 21, 8, 50, 7): {'duration': 300.0, 'file_path': '/tmp/vids/20190121_085007.MOV'},
+            datetime.datetime(2019, 1, 25, 16, 22, 20): {'duration': 300.0, 'file_path': '/tmp/vids/20190125_162220.MOV'},
+            datetime.datetime(2019, 1, 21, 9, 5, 8): {'duration': 216.75, 'file_path': '/tmp/vids/20190121_090508.MOV'},
+            datetime.datetime(2019, 1, 29, 8, 28, 26): {'duration': 300.0, 'file_path': '/tmp/vids/20190129_082825.MOV'},
+            datetime.datetime(2019, 1, 29, 8, 38, 27): {'duration': 286.0, 'file_path': '/tmp/vids/20190129_083826.MOV'},
+            datetime.datetime(2019, 1, 29, 8, 33, 27): {'duration': 300.0, 'file_path': '/tmp/vids/20190129_083327.MOV'},
+            datetime.datetime(2019, 1, 25, 16, 37, 21): {'duration': 300.0, 'file_path': '/tmp/vids/20190125_163721.MOV'},
+            datetime.datetime(2019, 1, 25, 16, 27, 21): {'duration': 300.0, 'file_path': '/tmp/vids/20190125_162721.MOV'},
+            datetime.datetime(2019, 1, 21, 8, 55, 8): {'duration': 300.0, 'file_path': '/tmp/vids/20190121_085508.MOV'},
+            datetime.datetime(2019, 1, 21, 9, 0, 8): {'duration': 300.0, 'file_path': '/tmp/vids/20190121_090008.MOV'},
+            datetime.datetime(2019, 1, 25, 16, 32, 21): {'duration': 300.0, 'file_path': '/tmp/vids/20190125_163221.MOV'}
+        }
+        creation_times = [
+            datetime.datetime(2019, 1, 25, 16, 37, 21),
+            datetime.datetime(2019, 1, 25, 16, 27, 21),
+            datetime.datetime(2019, 1, 25, 16, 32, 21),
+            datetime.datetime(2019, 1, 21, 8, 55, 8),
+            datetime.datetime(2019, 1, 25, 16, 22, 20),
+            datetime.datetime(2019, 1, 29, 8, 33, 27),
+            datetime.datetime(2019, 1, 21, 9, 5, 8),
+            datetime.datetime(2019, 1, 29, 8, 28, 26),
+            datetime.datetime(2019, 1, 21, 8, 50, 7),
+            datetime.datetime(2019, 1, 21, 9, 0, 8),
+            datetime.datetime(2019, 1, 29, 8, 38, 27)
+        ]
+
+        sequences = target.identify_sequences(videos_by_creation_time, creation_times)
+
+        # Confirm 3 sequences were identified
+        self.assertEqual(len(sequences), 3)
+        # Check the content of each sequence
+        for idx, seq in enumerate(sequences):
+            self.assertEqual(len(seq), len(sample_sequences[idx]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[idx][idx2][data])
+
 class TestAnalyzeFiles(unittest.TestCase):
     def test_analyze_files_no_files(self):
         """
