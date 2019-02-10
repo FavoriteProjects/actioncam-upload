@@ -55,6 +55,16 @@ class TestCompressMergeAndUploadSequences(unittest.TestCase):
         # Nothing to assert (the individual functions are tested separately for
         # their returns), just confirming no Exception is thrown.
 
+    def test_compress_merge_and_upload_sequences_no_net_no_compression(self):
+        """
+        Test the compress_merge_and_upload_sequences() function
+        """
+        args = target.parse_args(['--no-net', '--verbose', '--no-compression'])
+        youtube = None
+        target.compress_merge_and_upload_sequences(sample_sequences, youtube, args)
+        # Nothing to assert (the individual functions are tested separately for
+        # their returns), just confirming no Exception is thrown.
+
 class TestMergeSequence(unittest.TestCase):
     def test_merge_sequence(self):
         """
