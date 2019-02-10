@@ -109,12 +109,36 @@ class TestCompressSequence(unittest.TestCase):
             for data in ["creation_time", "duration", "file_path"]:
                 self.assertEqual(files[data], sample_sequences[0][idx][data])
 
-    def test_compress_sequence_ffmpeg(self):
+    def test_compress_sequence_ffmpeg_verbose(self):
         """
-        Test the compress_sequence() function, running the FFmpeg merge command
-        Nothing should change to the sequence
+        Test the compress_sequence() function, running the FFmpeg merge command with --verbose
+        The path to the files will be different (compressed to a temporary file)
         """
         args = target.parse_args(['--verbose'])
+        tempdir = tempfile.mkdtemp()
+        # Call the function with the first sequence from sample_sequences
+        # Using a deep copy of the sequence, otherwise running compress_sequence()
+        # without --dry-run modifies the elements, and the sample_sequences array
+        # gets modified which messes up other tests later on.
+        seq = target.compress_sequence(copy.deepcopy(sample_sequences[0]), tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
+        # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
+        for idx, files in enumerate(seq):
+            for data in ["creation_time", "duration"]:
+                self.assertEqual(files[data], sample_sequences[0][idx][data])
+            # The file path is different, now a new temporary folder (because the file has been compressed)
+            # Should start with the path to the temporary folder and end with the sequence's first file name.
+            self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
+            self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
+
+    def test_compress_sequence_ffmpeg_debug(self):
+        """
+        Test the compress_sequence() function, running the FFmpeg merge command with --debug
+        The path to the files will be different (compressed to a temporary file)
+        This will cause the output of ffmpeg (including the following error
+        message) to be displayed in the output of the test suite, this is NOT a problem:
+            /tmp/vids/20190121_085007.MOV: No such file or directory
+        """
+        args = target.parse_args(['--debug'])
         tempdir = tempfile.mkdtemp()
         # Call the function with the first sequence from sample_sequences
         # Using a deep copy of the sequence, otherwise running compress_sequence()
