@@ -348,7 +348,7 @@ def parse_args(arguments):
     # Add some more arguments
     if args.loglevel:
         logging.basicConfig(level=args.loglevel)
-        args.logging_level = logging.getLevelName(logging.getLogger().getEffectiveLevel())
+        args.logging_level = logging.getLevelName(args.loglevel)
     args.noauth_local_webserver = True
 
     return args
