@@ -345,36 +345,36 @@ class TestGetSequenceTitle(unittest.TestCase):
         sequence_title = target.get_sequence_title(creation_time)
         self.assertEqual(sequence_title, "2019-01-25 16:42:21")
 
-class TestArgparse(unittest.TestCase):
-    def test_arg_dry_run(self):
+class TestParseArgs(unittest.TestCase):
+    def test_parse_args_dry_run(self):
         """
         Test the --dry-run argument
         """
         parser = target.parse_args(['--dry-run'])
         self.assertTrue(parser.dry_run)
 
-    def test_arg_dry_run_shorthand(self):
+    def test_parse_args_dry_run_shorthand(self):
         """
         Test the -dr argument
         """
         parser = target.parse_args(['-dr'])
         self.assertTrue(parser.dry_run)
 
-    def test_arg_no_net(self):
+    def test_parse_args_no_net(self):
         """
         Test the --no-net argument
         """
         parser = target.parse_args(['--no-net'])
         self.assertTrue(parser.no_net)
 
-    def test_arg_no_net_shorthand(self):
+    def test_parse_args_no_net_shorthand(self):
         """
         Test the -nn argument
         """
         parser = target.parse_args(['-nn'])
         self.assertTrue(parser.no_net)
 
-    def test_arg_debug(self):
+    def test_parse_args_debug(self):
         """
         Test the --debug argument
         """
@@ -382,7 +382,7 @@ class TestArgparse(unittest.TestCase):
         self.assertEqual(parser.loglevel, logging.DEBUG)
         self.assertEqual(parser.logging_level, "DEBUG")
 
-    def test_arg_debug_shorthand(self):
+    def test_parse_args_debug_shorthand(self):
         """
         Test the -d argument
         """
@@ -390,7 +390,7 @@ class TestArgparse(unittest.TestCase):
         self.assertEqual(parser.loglevel, logging.DEBUG)
         self.assertEqual(parser.logging_level, "DEBUG")
 
-    def test_arg_verbose(self):
+    def test_parse_args_verbose(self):
         """
         Test the --verbose argument
         """
@@ -398,7 +398,7 @@ class TestArgparse(unittest.TestCase):
         self.assertEqual(parser.loglevel, logging.INFO)
         self.assertEqual(parser.logging_level, "INFO")
 
-    def test_arg_verbose_shorthand(self):
+    def test_parse_args_verbose_shorthand(self):
         """
         Test the -v argument
         """
@@ -406,21 +406,21 @@ class TestArgparse(unittest.TestCase):
         self.assertEqual(parser.loglevel, logging.INFO)
         self.assertEqual(parser.logging_level, "INFO")
 
-    def test_arg_privacyStatus_valid(self):
+    def test_parse_args_privacyStatus_valid(self):
         """
         Test the --privacyStatus argument with a valid value
         """
         parser = target.parse_args(['--privacyStatus', 'private'])
         self.assertEqual(parser.privacyStatus, 'private')
 
-    def test_arg_min_length_valid(self):
+    def test_parse_args_min_length_valid(self):
         """
         Test the --min-length argument with a valid value
         """
         parser = target.parse_args(['--min-length', '6'])
         self.assertEqual(parser.min_length, 6)
 
-    def test_arg_max_length_valid(self):
+    def test_parse_args_max_length_valid(self):
         """
         Test the --max-length argument with a valid value
         """
