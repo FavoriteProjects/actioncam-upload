@@ -428,6 +428,24 @@ class TestParseArgs(unittest.TestCase):
         self.assertEqual(parser.max_length, 48)
 
 class TestInitMain(unittest.TestCase):
+    def test_init_main_no_param(self):
+        """
+        Test the initialization code without any parameter
+        """
+        # Make the script believe we ran it directly
+        target.__name__ = "__main__"
+        # Pass it no arguments
+        target.sys.argv = ["scriptname.py"]
+        # Temporarily disable the logging output (we know this is "Critical")
+        logger = logging.getLogger()
+        logger.disabled = True
+        # Expect the script to return with code 12 (automatic folder detection failed)
+        with self.assertRaises(SystemExit) as cm:
+            target.init()
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 12)
+        logger.disabled = False
+
     def test_init_main_help(self):
         """
         Test the initialization code like we had passed --help
