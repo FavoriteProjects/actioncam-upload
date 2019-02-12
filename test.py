@@ -427,5 +427,20 @@ class TestParseArgs(unittest.TestCase):
         parser = target.parse_args(['--max-length', '48'])
         self.assertEqual(parser.max_length, 48)
 
+class TestInitMain(unittest.TestCase):
+    def test_init_main_help(self):
+        """
+        Test the initialization code like we had passed --help
+        """
+        # Make the script believe we ran it directly
+        target.__name__ = "__main__"
+        # Pass it the --test argument
+        target.sys.argv = ["scriptname.py", "--help"]
+        # Expect the script to return with code 0
+        with self.assertRaises(SystemExit) as cm:
+            target.init()
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 0)
+
 if __name__ == '__main__':
     unittest.main()
