@@ -386,5 +386,8 @@ def main():
 
     logging.info("Done, exiting.")
 
-if __name__ == "__main__":
-    main()
+def init():
+    if __name__ == "__main__":
+        main()
+
+init()
