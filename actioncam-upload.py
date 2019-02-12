@@ -353,8 +353,7 @@ def parse_args(arguments):
 
     return args
 
-
-if __name__ == "__main__":
+def main():
     folder = None
     files = None
     sequences = None
@@ -386,3 +385,6 @@ if __name__ == "__main__":
             compress_merge_and_upload_sequences(new_sequences, youtube, args)
 
     logging.info("Done, exiting.")
+
+if __name__ == "__main__":
+    main()
