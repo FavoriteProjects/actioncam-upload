@@ -90,6 +90,20 @@ class TestCompressMergeAndUploadSequences(unittest.TestCase):
         # Nothing to assert (the individual functions are tested separately for
         # their returns), just confirming no Exception is thrown.
 
+    def test_compress_merge_and_upload_sequences_no_arguments(self):
+        """
+        Test the compress_merge_and_upload_sequences() function with our sample video, without arguments
+        """
+        args = target.parse_args(['--verbose'])
+        youtube = None
+        # Using a deep copy of the sequence, otherwise running compress_sequence()
+        # without --dry-run modifies the elements, and the sample_sequences array
+        # gets modified which messes up other tests later on.
+        # Since we're not passing a real "youtube" argument, this call will raise an Exception
+        with self.assertRaises(AttributeError) as cm:
+            target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
+        self.assertEqual(str(cm.exception), "'NoneType' object has no attribute 'videos'")
+
 class TestMergeSequence(unittest.TestCase):
     def test_merge_sequence_dry_run(self):
         """
@@ -454,7 +468,7 @@ class TestParseArgs(unittest.TestCase):
         self.assertEqual(parser.max_length, 48)
 
 class TestInitMain(unittest.TestCase):
-    def test_init_main_no_param(self):
+    def test_init_main_no_arguments(self):
         """
         Test the initialization code without any parameter
         """
