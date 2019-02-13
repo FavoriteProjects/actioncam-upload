@@ -41,6 +41,18 @@ sample_sequences = [
     ]
 ]
 
+def createTempFolderWithDummyMOVFiles():
+    """
+    Create a temporary folder with 5 dummy files, 3 of which with .MOV extension
+    """
+    tempdir = tempfile.mkdtemp()
+    (ignore, mov_file_1) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
+    (ignore, mov_file_2) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
+    (ignore, mov_file_3) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
+    tempfile.mkstemp(dir=tempdir)
+    tempfile.mkstemp(dir=tempdir)
+    return (tempdir, mov_file_1, mov_file_2, mov_file_3)
+
 class TestCompressMergeAndUploadSequences(unittest.TestCase):
     def test_compress_merge_and_upload_sequences_no_net(self):
         """
@@ -256,12 +268,7 @@ class TestDetectFolder(unittest.TestCase):
         Test the detect_folder() function, explicitly passing it a valid path
         """
         # Create a temporary folder with 5 dummy files, 3 of which with .MOV extension
-        tempdir = tempfile.mkdtemp()
-        (ignore, mov_file_1) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
-        (ignore, mov_file_2) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
-        (ignore, mov_file_3) = tempfile.mkstemp(suffix=".MOV", dir=tempdir)
-        tempfile.mkstemp(dir=tempdir)
-        tempfile.mkstemp(dir=tempdir)
+        (tempdir, mov_file_1, mov_file_2, mov_file_3) = createTempFolderWithDummyMOVFiles()
 
         # Run detect_folder()
         args = target.parse_args(['--folder', tempdir])
@@ -459,6 +466,30 @@ class TestInitMain(unittest.TestCase):
             target.init()
         the_exception = cm.exception
         self.assertEqual(the_exception.code, 0)
+
+    def test_init_main_folder_no_net(self):
+        """
+        Test the initialization code like we had passed --folder and --no-net
+        """
+        # Make the script believe we ran it directly
+        target.__name__ = "__main__"
+        # Create a temporary folder with 5 dummy files, 3 of which with .MOV extension
+        (tempdir, mov_file_1, mov_file_2, mov_file_3) = createTempFolderWithDummyMOVFiles()
+        # Pass it the --folder argument pointing to our dummy folder and files
+        target.sys.argv = ["scriptname.py", "--no-net", "--folder", tempdir]
+
+        # Temporarily disable the logging output (we know this is "Critical")
+        logger = logging.getLogger()
+        logger.disabled = True
+
+        # Expect the script to throw an Exception since these are not real MOV files
+        with self.assertRaises(Exception) as cm:
+            target.init()
+        self.assertEqual(str(cm.exception), "I found no duration")
+        logger.disabled = False
+
+        # Delete the temporary folder and files
+        shutil.rmtree(tempdir)
 
 if __name__ == '__main__':
     unittest.main()
