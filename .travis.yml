@@ -12,4 +12,4 @@ install:
   - pip install -r requirements.txt
 # Command to run tests
 script:
-  - python3 -m unittest -v test
+  - python3 -m unittest discover --start-directory ./tests -v
