@@ -473,29 +473,17 @@ class TestInitMain(unittest.TestCase):
         the_exception = cm.exception
         self.assertEqual(the_exception.code, 0)
 
-    def test_init_main_folder_no_net(self):
+    def test_init_main_folder_no_net_no_compression(self):
         """
-        Test the initialization code like we had passed --folder and --no-net
+        Test the initialization code like we had passed --folder, --no-net and --no-compression
+        This simulates a full run of the program with a single file, without uploading or compressing
         """
         # Make the script believe we ran it directly
         target.__name__ = "__main__"
-        # Create a temporary folder with 5 dummy files, 3 of which with .MOV extension
-        (tempdir, mov_file_1, mov_file_2, mov_file_3) = createTempFolderWithDummyMOVFiles()
-        # Pass it the --folder argument pointing to our dummy folder and files
-        target.sys.argv = ["scriptname.py", "--no-net", "--folder", tempdir]
-
-        # Temporarily disable the logging output (we know this is "Critical")
-        logger = logging.getLogger()
-        logger.disabled = True
-
-        # Expect the script to throw an Exception since these are not real MOV files
-        with self.assertRaises(Exception) as cm:
-            target.init()
-        self.assertEqual(str(cm.exception), "I found no duration")
-        logger.disabled = False
-
-        # Delete the temporary folder and files
-        shutil.rmtree(tempdir)
+        target.sys.argv = ["scriptname.py", "--no-net", "--no-compression", "--folder", "sample_videos"]
+        target.init()
+        # Nothing to assert (the individual functions are tested separately for
+        # their returns), just confirming no Exception is thrown.
 
     def test_init_main_folder_with_net(self):
         """
