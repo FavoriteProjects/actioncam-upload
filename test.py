@@ -120,6 +120,8 @@ class TestCompressSequence(unittest.TestCase):
         for idx, files in enumerate(seq):
             for data in ["creation_time", "duration", "file_path"]:
                 self.assertEqual(files[data], sample_sequences[0][idx][data])
+        # Delete the temporary folder
+        shutil.rmtree(tempdir)
 
     def test_compress_sequence_ffmpeg_verbose(self):
         """
@@ -141,6 +143,8 @@ class TestCompressSequence(unittest.TestCase):
             # Should start with the path to the temporary folder and end with the sequence's first file name.
             self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
             self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
+        # Delete the temporary folder
+        shutil.rmtree(tempdir)
 
     def test_compress_sequence_ffmpeg_debug(self):
         """
@@ -165,6 +169,8 @@ class TestCompressSequence(unittest.TestCase):
             # Should start with the path to the temporary folder and end with the sequence's first file name.
             self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
             self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
+        # Delete the temporary folder
+        shutil.rmtree(tempdir)
 
 class TestAnalyzeSequences(unittest.TestCase):
     def test_analyze_sequences_no_net(self):
