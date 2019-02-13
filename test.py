@@ -491,5 +491,36 @@ class TestInitMain(unittest.TestCase):
         # Delete the temporary folder and files
         shutil.rmtree(tempdir)
 
+    def test_init_main_folder_with_net(self):
+        """
+        Test the initialization code like we had passed --folder and network
+        """
+        # Make the script believe we ran it directly
+        target.__name__ = "__main__"
+        # Create a temporary folder with 5 dummy files, 3 of which with .MOV extension
+        (tempdir, mov_file_1, mov_file_2, mov_file_3) = createTempFolderWithDummyMOVFiles()
+        # Pass it the --folder argument pointing to our dummy folder and files
+        target.sys.argv = ["scriptname.py", "--folder", tempdir]
+
+        # Temporarily disable the logging output (we know this is "Critical")
+        logger = logging.getLogger()
+        logger.disabled = True
+
+        # Test differently if we have the files for YouTube authentication (local) or not (Travis)
+        if os.path.isfile("client_secret.json"):
+            # Expect the script to throw an Exception since these are not real MOV files
+            with self.assertRaises(Exception) as cm:
+                target.init()
+            self.assertEqual(str(cm.exception), "I found no duration")
+        else:
+            # Expect the script to throw an Exception since these are not real MOV files
+            with self.assertRaises(SystemExit) as cm:
+                target.init()
+            self.assertTrue(str(cm.exception).startswith("The client secrets were invalid:"))
+        logger.disabled = False
+
+        # Delete the temporary folder and files
+        shutil.rmtree(tempdir)
+
 if __name__ == '__main__':
     unittest.main()
