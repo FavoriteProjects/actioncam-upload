@@ -56,9 +56,22 @@ def createTempFolderWithDummyMOVFiles():
 class TestCompressMergeAndUploadSequences(unittest.TestCase):
     def test_compress_merge_and_upload_sequences_no_net(self):
         """
-        Test the compress_merge_and_upload_sequences() function
+        Test the compress_merge_and_upload_sequences() function with --no-net
         """
         args = target.parse_args(['--no-net', '--verbose'])
+        youtube = None
+        # Using a deep copy of the sequence, otherwise running compress_sequence()
+        # without --dry-run modifies the elements, and the sample_sequences array
+        # gets modified which messes up other tests later on.
+        target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
+        # Nothing to assert (the individual functions are tested separately for
+        # their returns), just confirming no Exception is thrown.
+
+    def test_compress_merge_and_upload_sequences_dry_run(self):
+        """
+        Test the compress_merge_and_upload_sequences() function with --dry-run
+        """
+        args = target.parse_args(['--dry-run', '--verbose'])
         youtube = None
         # Using a deep copy of the sequence, otherwise running compress_sequence()
         # without --dry-run modifies the elements, and the sample_sequences array
