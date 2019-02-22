@@ -151,7 +151,12 @@ def compress_merge_and_upload_sequences(new_sequences, youtube, args):
             # Upload the merged sequence
             logging.info("Uploading sequence %d/%d." % (idx + 1, num_sequences))
             sequence_title = get_sequence_title(seq[0]["creation_time"])
-            upload_sequence(file_to_upload, sequence_title, youtube, args)
+            try:
+                upload_sequence(file_to_upload, sequence_title, youtube, args)
+            except Exception as e:
+                # Delete the temporary folder since the program execution stops here
+                shutil.rmtree(tempdir)
+                raise
 
         if len(seq) > 1:
             # Delete the merged file (if there is only one file, no temporary merged file was created, so no need to delete)
