@@ -88,6 +88,12 @@ def compress_sequence(seq, tempdir, dry_run, logging_level, id_sequence, num_seq
     for idx, f in enumerate(seq):
         compressed_file = "%s/%s" % (tempdir, os.path.split(f["file_path"])[1])
 
+        # Exit if input file doesn't exist (could happen if the actioncam got unplugged)
+        if not os.path.isfile(f["file_path"]):
+            logging.error("The file doesn't exist (actioncam disconnected?): '%s'" % f["file_path"])
+            logging.critical("Exiting...")
+            sys.exit(15)
+
         # Reduce the resolution by 4 (1/2h 1/2w) and reduce framerate to 25 images/second
         #ffmpeg -i 20190121_085007.MOV -vf "scale=iw/2:ih/2" -r 25 20190121_085007-div2-r25.mov
         command = ["ffmpeg",
