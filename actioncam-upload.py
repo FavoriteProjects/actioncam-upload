@@ -72,6 +72,10 @@ def merge_sequence(seq, dry_run, logging_level):
         else:
             pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
         out, err = pipe.communicate()
+        if 0 != pipe.returncode:
+            logging.error("The FFmpeg concat command returned a non-zero code: %d" % pipe.returncode)
+            logging.critical("Exiting...")
+            sys.exit(17)
         logging.debug("FFmpeg concat command done.")
 
     logging.debug("Deleting temporary FFmpeg merge file.")
@@ -114,6 +118,10 @@ def compress_sequence(seq, tempdir, dry_run, logging_level, id_sequence, num_seq
             else:
                 pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
             out, err = pipe.communicate()
+            if 0 != pipe.returncode:
+                logging.error("The FFmpeg compress command returned a non-zero code: %d" % pipe.returncode)
+                logging.critical("Exiting...")
+                sys.exit(16)
             logging.debug("FFmpeg compress command done.")
             # Update the sequence information with the path to the new compressed file
             f["file_path"] = compressed_file
