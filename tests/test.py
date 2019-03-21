@@ -20,6 +20,15 @@ import copy
 sys.path.append('.')
 target = __import__("actioncam-upload")
 
+# Used to test manual entry when using the --interactive flag
+mock_raw_input_counter = 0
+mock_raw_input_values = []
+def mock_raw_input(s):
+    global mock_raw_input_counter
+    global mock_raw_input_values
+    mock_raw_input_counter += 1
+    return mock_raw_input_values[mock_raw_input_counter - 1]
+target.input = mock_raw_input
 
 sample_sequences = [
     [
@@ -236,12 +245,54 @@ class TestAnalyzeSequences(unittest.TestCase):
                 for data in ["creation_time", "duration", "file_path"]:
                     self.assertEqual(files[data], sample_sequences[idx][idx2][data])
 
+    def test_analyze_sequences_interactive_no_net(self):
+        """
+        Test the analyze_sequences() function, passing a valid sequences array, --interactive (just Enter) and --no-net
+        This means all the sequences should be identified as new
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = [""]
+        args = target.parse_args(['--interactive', '--no-net'])
+        youtube = None
+        new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
+        # Confirm 3 sequences were identified as new
+        self.assertEqual(len(new_sequences), 3)
+        # Check the content of each sequence
+        for idx, seq in enumerate(new_sequences):
+            self.assertEqual(len(seq), len(sample_sequences[idx]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[idx][idx2][data])
+
     def test_analyze_sequences_length_restriction(self):
         """
         Test the analyze_sequences() function, passing a valid sequences array and both --min-length and --max-length
         Only one sequence should be identified as new
         """
         args = target.parse_args(['--no-net', '--min-length', '15', '--max-length', '19'])
+        youtube = None
+        new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
+        # Confirm only one sequence were identified as new, the first of the sample sequences
+        self.assertEqual(len(new_sequences), 1)
+        # Check the content of each sequence
+        for idx, seq in enumerate(new_sequences):
+            self.assertEqual(len(seq), len(sample_sequences[0]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[0][idx2][data])
+
+    def test_analyze_sequences_interactive_length_restriction(self):
+        """
+        Test the analyze_sequences() function, passing a valid sequences array, --interactive (just Enter) and both --min-length and --max-length
+        Only one sequence should be identified as new
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = [""]
+        args = target.parse_args(['--interactive', '--no-net', '--min-length', '15', '--max-length', '19'])
         youtube = None
         new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
         # Confirm only one sequence were identified as new, the first of the sample sequences
@@ -295,6 +346,108 @@ class TestIdentifySequences(unittest.TestCase):
             for idx2, files in enumerate(seq):
                 for data in ["creation_time", "duration", "file_path"]:
                     self.assertEqual(files[data], sample_sequences[idx][idx2][data])
+
+class TestInteractiveSequenceSelection(unittest.TestCase):
+    def test_interactive_sequence_selection_empty_sequences(self):
+        """
+        Test the interactive_sequence_selection() function, passing an empty list of sequences
+        (This scenario should not ever happen)
+        """
+        with self.assertRaises(Exception) as cm:
+            new_sequences = target.interactive_sequence_selection([], [])
+        self.assertEqual(str(cm.exception), "No sequences were passed (should never happen, something has gone wrong...)")
+
+    def test_interactive_sequence_selection_quit(self):
+        """
+        Test the interactive_sequence_selection() function, mock quitting (enter "q")
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["q"]
+        with self.assertRaises(SystemExit) as cm:
+            new_sequences = target.interactive_sequence_selection([None, None], [None])
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 18)
+
+    def test_interactive_sequence_selection_quit_no_new_sequences(self):
+        """
+        Same as previous test, but passing no suggested new_sequences
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["q"]
+        with self.assertRaises(SystemExit) as cm:
+            new_sequences = target.interactive_sequence_selection([None, None], [])
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 18)
+
+    def test_interactive_sequence_selection_dummy_enter(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and just pressing "Enter" (validating the automatic new_sequences)
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = [""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], ["C", "A"])
+        self.assertEqual(new_sequences, ["C", "A"])
+
+    def test_interactive_sequence_selection_dummy_2_0_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and passing "2", "0" and "1"
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_2_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and repeating one of the inputs
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "2", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_A_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and entering a non-digit
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "A", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_99_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and entering a positve out of range number
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "99", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_min4_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and entering a negative out of range number
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "-4", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
 
 class TestAnalyzeFiles(unittest.TestCase):
     def test_analyze_files_no_files(self):
