@@ -72,7 +72,7 @@ def createTempFolderWithDummyMOVFiles():
     #     # Using a deep copy of the sequence, otherwise running compress_sequence()
     #     # without --dry-run modifies the elements, and the sample_sequences array
     #     # gets modified which messes up other tests later on.
-    #     target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
+    #     target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), [], youtube, args)
     #     # Nothing to assert (the individual functions are tested separately for
     #     # their returns), just confirming no Exception is thrown.
     #
@@ -85,7 +85,7 @@ def createTempFolderWithDummyMOVFiles():
     #     # Using a deep copy of the sequence, otherwise running compress_sequence()
     #     # without --dry-run modifies the elements, and the sample_sequences array
     #     # gets modified which messes up other tests later on.
-    #     target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
+    #     target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), [], youtube, args)
     #     # Nothing to assert (the individual functions are tested separately for
     #     # their returns), just confirming no Exception is thrown.
     #
@@ -95,7 +95,7 @@ def createTempFolderWithDummyMOVFiles():
     #     """
     #     args = target.parse_args(['--no-net', '--verbose', '--no-compression'])
     #     youtube = None
-    #     target.compress_merge_and_upload_sequences(sample_sequences, youtube, args)
+    #     target.compress_merge_and_upload_sequences(sample_sequences, [], youtube, args)
     #     # Nothing to assert (the individual functions are tested separately for
     #     # their returns), just confirming no Exception is thrown.
 
@@ -110,7 +110,7 @@ def createTempFolderWithDummyMOVFiles():
     #     # gets modified which messes up other tests later on.
     #     # Since we're not passing a real "youtube" argument, this call will raise an Exception
     #     with self.assertRaises(AttributeError) as cm:
-    #         target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
+    #         target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), [], youtube, args)
     #     self.assertEqual(str(cm.exception), "'NoneType' object has no attribute 'videos'")
 
 class TestMergeSequence(unittest.TestCase):
@@ -226,6 +226,45 @@ class TestCompressSequence(unittest.TestCase):
 #             self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
 #         # Delete the temporary folder
 #         shutil.rmtree(tempdir)
+
+class TestPreCopy(unittest.TestCase):
+    def test_pre_copy(self):
+        """
+        Test the pre_copy() function
+        """
+        # Simulate files on the actioncam
+        temp_actioncam_dir = tempfile.mkdtemp()
+
+        new_sequences = copy.deepcopy(sample_sequences)
+
+        # Create temporary files and use these in the sample_sequences
+        mov_files = {}
+        for idx, seq in enumerate(new_sequences):
+            mov_files[idx] = {}
+            for idx2, files in enumerate(seq):
+                (ignore, mov_files[idx][idx2]) = tempfile.mkstemp(suffix=".MOV", dir=temp_actioncam_dir)
+                files["file_path"] = mov_files[idx][idx2]
+
+        # Confirm that there are 11 dummy files in the temporary actioncam folder
+        self.assertEqual(len([name for name in os.listdir(temp_actioncam_dir) if os.path.isfile(os.path.join(temp_actioncam_dir, name))]), 11)
+
+        # Copy the files from the "actioncam" folder to new temporary folders
+        (new_sequences, pre_copy_folders) = target.pre_copy(new_sequences)
+
+        for idx, seq in enumerate(new_sequences):
+            # Confirm the number of files in that sequence's temporary folder is correct
+            self.assertEqual(len([name for name in os.listdir(pre_copy_folders[idx]) if os.path.isfile(os.path.join(pre_copy_folders[idx], name))]), len(seq))
+            for idx2, files in enumerate(seq):
+                # concatenate that sequence's temp folder with that file's filename
+                fname = os.path.join(pre_copy_folders[idx], os.path.split(mov_files[idx][idx2])[1])
+                self.assertEqual(files["file_path"], fname)
+            # Delete the new temporary folders (and files)
+            shutil.rmtree(pre_copy_folders[idx])
+
+        # Confirm the original files are still left in the temporary actioncam folder (it's a copy, not a move)
+        self.assertEqual(len([name for name in os.listdir(temp_actioncam_dir) if os.path.isfile(os.path.join(temp_actioncam_dir, name))]), 11)
+        # Delete the temporary actioncam folder
+        shutil.rmtree(temp_actioncam_dir)
 
 class TestAnalyzeSequences(unittest.TestCase):
     def test_analyze_sequences_no_net(self):

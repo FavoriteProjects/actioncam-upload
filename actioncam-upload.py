@@ -131,7 +131,7 @@ def compress_sequence(seq, tempdir, dry_run, logging_level, id_sequence, num_seq
         logging.debug(seq)
     return seq
 
-def compress_merge_and_upload_sequences(new_sequences, youtube, args):
+def compress_merge_and_upload_sequences(new_sequences, pre_copy_folders, youtube, args):
     tempdir = None
     num_sequences = len(new_sequences)
     logging.debug("Preparing to compress, merge and upload %d sequences." % num_sequences)
@@ -168,24 +168,47 @@ def compress_merge_and_upload_sequences(new_sequences, youtube, args):
             try:
                 upload_sequence(file_to_upload, sequence_title, youtube, args)
             except Exception as e:
-                # Delete the temporary folder since the program execution stops here
-                shutil.rmtree(tempdir)
+                # Delete the temporary folders and files, since the program execution stops here
+                delete_temporary_files(seq, file_to_upload, idx, num_sequences, args, tempdir, pre_copy_folders)
                 raise
+        # Delete the temporary folders and files
+        delete_temporary_files(seq, file_to_upload, idx, num_sequences, args, tempdir, pre_copy_folders)
 
-        if len(seq) > 1:
-            # Delete the merged file (if there is only one file, no temporary merged file was created, so no need to delete)
-            if os.path.isfile(file_to_upload):
-                logging.debug("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
-                os.remove(file_to_upload)
-                logging.debug("File '%s' removed." % file_to_upload)
+def delete_temporary_files(seq, file_to_upload, idx, num_sequences, args, tempdir, pre_copy_folders):
+    if len(seq) > 1:
+        # Delete the merged file (if there is only one file, no temporary merged file was created, so no need to delete)
+        if os.path.isfile(file_to_upload):
+            logging.debug("Deleting merged file for sequence %d/%d." % (idx + 1, num_sequences))
+            os.remove(file_to_upload)
+            logging.debug("File '%s' removed." % file_to_upload)
 
-        if not args.no_compression:
-            # Delete the temporary folder that holds the compressed files
-            shutil.rmtree(tempdir)
-            logging.debug("The temporary folder with the compressed files for this sequence has been removed.")
+    if not args.no_compression:
+        # Delete the compressed files' temporary folder
+        shutil.rmtree(tempdir)
+        logging.debug("The temporary folder with the compressed files for this sequence has been removed.")
+
+    if pre_copy_folders != []:
+        # Delete the temporary folder and files where the original files where copied to
+        shutil.rmtree(pre_copy_folders[idx])
+        logging.debug("The temporary folder where the original files where copied to has been removed.")
 
 def get_sequence_title(creation_time):
     return creation_time.strftime("%Y-%m-%d %H:%M:%S")
+
+def pre_copy(new_sequences):
+    logging.debug("Pre-copying the files from the actioncam to a temporary folder")
+    pre_copy_folders = []
+    for idx, seq in enumerate(new_sequences):
+        # Create a new temporary folder for this sequence's files
+        pre_copy_folders.append(tempfile.mkdtemp())
+        for idx2, files in enumerate(seq):
+            logging.info("Pre-copying file %d/%d of sequence %d/%d..." % (idx2 + 1, len(seq), idx + 1, len(new_sequences)))
+            # Copy the files from that sequence to that new temporary folder
+            new_filename = os.path.join(pre_copy_folders[idx], os.path.split(files["file_path"])[1])
+            shutil.copy(files["file_path"], new_filename)
+            # Update that file's path to the new temporary path
+            files["file_path"] = new_filename
+    return (new_sequences, pre_copy_folders)
 
 def analyze_sequences(sequences, youtube, args):
     sequence_title = None
@@ -405,6 +428,7 @@ def parse_args(arguments):
     parser.add_argument("-k", '--keywords', help='Video keywords, comma separated')
     parser.add_argument("-p", '--privacyStatus', choices=VALID_PRIVACY_STATUSES, default='private', help='Video privacy status.')
     parser.add_argument("-i", '--interactive', action='store_true', required=False, help="Manually select which sequences to upload.")
+    parser.add_argument("-pc", '--pre-copy', action='store_true', required=False, help="Copy the files from the actioncam to a temporary folder on the computer, useful in case the actioncam gets disconnected.")
     parser.add_argument("-dr", "--dry-run", action='store_true', required=False, help="Do not combine files or upload.")
     parser.add_argument("-nn", "--no-net", action='store_true', required=False, help="Do not use the network (no checking on YouTube or upload).")
     parser.add_argument("-nc", "--no-compression", action='store_true', required=False, help="Do not compress the files before uploading.")
@@ -453,14 +477,19 @@ def main():
 
     # Analyze the files to identify continuous sequences
     sequences = analyze_files(files)
-    if(len(sequences) > 0):
 
+    if(len(sequences) > 0):
         # Check which sequences have already been uploaded and which ones are new
         new_sequences = analyze_sequences(sequences, youtube, args)
-        if(len(new_sequences) > 0):
 
+        pre_copy_folders = []
+        if(args.pre_copy):
+            # Copy the files from the actioncam to a temporary folder on the computer, useful in case the actioncam gets disconnected
+            (new_sequences, pre_copy_folders) = pre_copy(new_sequences)
+
+        if(len(new_sequences) > 0):
             # Combine new sequences into individual files and upload the combined files
-            compress_merge_and_upload_sequences(new_sequences, youtube, args)
+            compress_merge_and_upload_sequences(new_sequences, pre_copy_folders, youtube, args)
 
     logging.info("Done, exiting.")
 
