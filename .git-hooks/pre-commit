@@ -1,4 +1,4 @@
 #!/bin/sh
 
 # Run the Unit Tests suite
-exec python3 -m unittest -v test
+exec coverage run --include=./*.py --omit=tests/* tests/test.py && coverage html

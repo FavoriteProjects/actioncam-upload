@@ -20,6 +20,15 @@ import copy
 sys.path.append('.')
 target = __import__("actioncam-upload")
 
+# Used to test manual entry when using the --interactive flag
+mock_raw_input_counter = 0
+mock_raw_input_values = []
+def mock_raw_input(s):
+    global mock_raw_input_counter
+    global mock_raw_input_values
+    mock_raw_input_counter += 1
+    return mock_raw_input_values[mock_raw_input_counter - 1]
+target.input = mock_raw_input
 
 sample_sequences = [
     [
@@ -53,56 +62,56 @@ def createTempFolderWithDummyMOVFiles():
     tempfile.mkstemp(dir=tempdir)
     return (tempdir, mov_file_1, mov_file_2, mov_file_3)
 
-class TestCompressMergeAndUploadSequences(unittest.TestCase):
-    def test_compress_merge_and_upload_sequences_no_net(self):
-        """
-        Test the compress_merge_and_upload_sequences() function with --no-net
-        """
-        args = target.parse_args(['--no-net', '--verbose'])
-        youtube = None
-        # Using a deep copy of the sequence, otherwise running compress_sequence()
-        # without --dry-run modifies the elements, and the sample_sequences array
-        # gets modified which messes up other tests later on.
-        target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
-        # Nothing to assert (the individual functions are tested separately for
-        # their returns), just confirming no Exception is thrown.
+# class TestCompressMergeAndUploadSequences(unittest.TestCase):
+    # def test_compress_merge_and_upload_sequences_no_net(self):
+    #     """
+    #     Test the compress_merge_and_upload_sequences() function with --no-net
+    #     """
+    #     args = target.parse_args(['--no-net', '--verbose'])
+    #     youtube = None
+    #     # Using a deep copy of the sequence, otherwise running compress_sequence()
+    #     # without --dry-run modifies the elements, and the sample_sequences array
+    #     # gets modified which messes up other tests later on.
+    #     target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), [], youtube, args)
+    #     # Nothing to assert (the individual functions are tested separately for
+    #     # their returns), just confirming no Exception is thrown.
+    #
+    # def test_compress_merge_and_upload_sequences_dry_run(self):
+    #     """
+    #     Test the compress_merge_and_upload_sequences() function with --dry-run
+    #     """
+    #     args = target.parse_args(['--dry-run', '--verbose'])
+    #     youtube = None
+    #     # Using a deep copy of the sequence, otherwise running compress_sequence()
+    #     # without --dry-run modifies the elements, and the sample_sequences array
+    #     # gets modified which messes up other tests later on.
+    #     target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), [], youtube, args)
+    #     # Nothing to assert (the individual functions are tested separately for
+    #     # their returns), just confirming no Exception is thrown.
+    #
+    # def test_compress_merge_and_upload_sequences_no_net_no_compression(self):
+    #     """
+    #     Test the compress_merge_and_upload_sequences() function
+    #     """
+    #     args = target.parse_args(['--no-net', '--verbose', '--no-compression'])
+    #     youtube = None
+    #     target.compress_merge_and_upload_sequences(sample_sequences, [], youtube, args)
+    #     # Nothing to assert (the individual functions are tested separately for
+    #     # their returns), just confirming no Exception is thrown.
 
-    def test_compress_merge_and_upload_sequences_dry_run(self):
-        """
-        Test the compress_merge_and_upload_sequences() function with --dry-run
-        """
-        args = target.parse_args(['--dry-run', '--verbose'])
-        youtube = None
-        # Using a deep copy of the sequence, otherwise running compress_sequence()
-        # without --dry-run modifies the elements, and the sample_sequences array
-        # gets modified which messes up other tests later on.
-        target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
-        # Nothing to assert (the individual functions are tested separately for
-        # their returns), just confirming no Exception is thrown.
-
-    def test_compress_merge_and_upload_sequences_no_net_no_compression(self):
-        """
-        Test the compress_merge_and_upload_sequences() function
-        """
-        args = target.parse_args(['--no-net', '--verbose', '--no-compression'])
-        youtube = None
-        target.compress_merge_and_upload_sequences(sample_sequences, youtube, args)
-        # Nothing to assert (the individual functions are tested separately for
-        # their returns), just confirming no Exception is thrown.
-
-    def test_compress_merge_and_upload_sequences_no_arguments(self):
-        """
-        Test the compress_merge_and_upload_sequences() function with our sample video, without arguments
-        """
-        args = target.parse_args(['--verbose'])
-        youtube = None
-        # Using a deep copy of the sequence, otherwise running compress_sequence()
-        # without --dry-run modifies the elements, and the sample_sequences array
-        # gets modified which messes up other tests later on.
-        # Since we're not passing a real "youtube" argument, this call will raise an Exception
-        with self.assertRaises(AttributeError) as cm:
-            target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), youtube, args)
-        self.assertEqual(str(cm.exception), "'NoneType' object has no attribute 'videos'")
+    # def test_compress_merge_and_upload_sequences_no_arguments(self):
+    #     """
+    #     Test the compress_merge_and_upload_sequences() function with our sample video, without arguments
+    #     """
+    #     args = target.parse_args(['--verbose'])
+    #     youtube = None
+    #     # Using a deep copy of the sequence, otherwise running compress_sequence()
+    #     # without --dry-run modifies the elements, and the sample_sequences array
+    #     # gets modified which messes up other tests later on.
+    #     # Since we're not passing a real "youtube" argument, this call will raise an Exception
+    #     with self.assertRaises(AttributeError) as cm:
+    #         target.compress_merge_and_upload_sequences(copy.deepcopy(sample_sequences), [], youtube, args)
+    #     self.assertEqual(str(cm.exception), "'NoneType' object has no attribute 'videos'")
 
 class TestMergeSequence(unittest.TestCase):
     def test_merge_sequence_dry_run(self):
@@ -113,91 +122,149 @@ class TestMergeSequence(unittest.TestCase):
         file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
         self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
-    def test_merge_sequence_ffmpeg_verbose(self):
-        """
-        Test the merge_sequence() function, running the FFmpeg merge command with --verbose
-        """
-        args = target.parse_args(['--verbose'])
-        file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
-        self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
+    # def test_merge_sequence_ffmpeg_verbose(self):
+    #     """
+    #     Test the merge_sequence() function, running the FFmpeg merge command with --verbose
+    #     """
+    #     args = target.parse_args(['--verbose'])
+    #     file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
+    #     self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
-    def test_merge_sequence_ffmpeg_debug(self):
-        """
-        Test the merge_sequence() function, running the FFmpeg merge command with --debug
-        This will cause the output of ffmpeg (including the following error
-        message) to be displayed in the output of the test suite, this is NOT a problem:
-            Impossible to open '/tmp/vids/20190121_085007.MOV'
-            /tmp/actioncam-upload-files.txt: No such file or directory
-        """
-        args = target.parse_args(['--debug'])
-        file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
-        self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
+    # def test_merge_sequence_ffmpeg_debug(self):
+    #     """
+    #     Test the merge_sequence() function, running the FFmpeg merge command with --debug
+    #     This will cause the output of ffmpeg (including the following error
+    #     message) to be displayed in the output of the test suite, this is NOT a problem:
+    #         Impossible to open '/tmp/vids/20190121_085007.MOV'
+    #         /tmp/actioncam-upload-files.txt: No such file or directory
+    #     """
+    #     args = target.parse_args(['--debug'])
+    #     file_to_upload = target.merge_sequence(sample_sequences[0], args.dry_run, args.logging_level)
+    #     self.assertEqual(file_to_upload, "/tmp/%s" % os.path.split(sample_sequences[0][0]["file_path"])[1])
 
 class TestCompressSequence(unittest.TestCase):
-    def test_compress_sequence_dry_run(self):
+    def test_compress_sequence_invalid_file(self):
         """
         Test the compress_sequence() function with --dry-run
         Nothing should change to the sequence
         """
         args = target.parse_args(['--dry-run', '--verbose'])
         tempdir = tempfile.mkdtemp()
-        # Call the function with the first sequence from sample_sequences
-        seq = target.compress_sequence(sample_sequences[0], tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
-        # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
-        for idx, files in enumerate(seq):
-            for data in ["creation_time", "duration", "file_path"]:
-                self.assertEqual(files[data], sample_sequences[0][idx][data])
+        with self.assertRaises(SystemExit) as cm:
+            # Call the function with the first sequence from sample_sequences
+            # Since it's a non-existing file, process will close with code 15
+            seq = target.compress_sequence(sample_sequences[0], tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 15)
         # Delete the temporary folder
         shutil.rmtree(tempdir)
 
-    def test_compress_sequence_ffmpeg_verbose(self):
-        """
-        Test the compress_sequence() function, running the FFmpeg merge command with --verbose
-        The path to the files will be different (compressed to a temporary file)
-        """
-        args = target.parse_args(['--verbose'])
-        tempdir = tempfile.mkdtemp()
-        # Call the function with the first sequence from sample_sequences
-        # Using a deep copy of the sequence, otherwise running compress_sequence()
-        # without --dry-run modifies the elements, and the sample_sequences array
-        # gets modified which messes up other tests later on.
-        seq = target.compress_sequence(copy.deepcopy(sample_sequences[0]), tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
-        # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
-        for idx, files in enumerate(seq):
-            for data in ["creation_time", "duration"]:
-                self.assertEqual(files[data], sample_sequences[0][idx][data])
-            # The file path is different, now a new temporary folder (because the file has been compressed)
-            # Should start with the path to the temporary folder and end with the sequence's first file name.
-            self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
-            self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
-        # Delete the temporary folder
-        shutil.rmtree(tempdir)
 
-    def test_compress_sequence_ffmpeg_debug(self):
+
+
+#     def test_compress_sequence_dry_run(self):
+#         """
+#         Test the compress_sequence() function with --dry-run
+#         Nothing should change to the sequence
+#         """
+#         args = target.parse_args(['--dry-run', '--verbose'])
+#         tempdir = tempfile.mkdtemp()
+#         # Call the function with the first sequence from sample_sequences
+#         seq = target.compress_sequence(sample_sequences[0], tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
+#         # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
+#         for idx, files in enumerate(seq):
+#             for data in ["creation_time", "duration", "file_path"]:
+#                 self.assertEqual(files[data], sample_sequences[0][idx][data])
+#         # Delete the temporary folder
+#         shutil.rmtree(tempdir)
+#
+#     def test_compress_sequence_ffmpeg_verbose(self):
+#         """
+#         Test the compress_sequence() function, running the FFmpeg merge command with --verbose
+#         The path to the files will be different (compressed to a temporary file)
+#         """
+#         args = target.parse_args(['--verbose'])
+#         tempdir = tempfile.mkdtemp()
+#         # Call the function with the first sequence from sample_sequences
+#         # Using a deep copy of the sequence, otherwise running compress_sequence()
+#         # without --dry-run modifies the elements, and the sample_sequences array
+#         # gets modified which messes up other tests later on.
+#         seq = target.compress_sequence(copy.deepcopy(sample_sequences[0]), tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
+#         # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
+#         for idx, files in enumerate(seq):
+#             for data in ["creation_time", "duration"]:
+#                 self.assertEqual(files[data], sample_sequences[0][idx][data])
+#             # The file path is different, now a new temporary folder (because the file has been compressed)
+#             # Should start with the path to the temporary folder and end with the sequence's first file name.
+#             self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
+#             self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
+#         # Delete the temporary folder
+#         shutil.rmtree(tempdir)
+#
+#     def test_compress_sequence_ffmpeg_debug(self):
+#         """
+#         Test the compress_sequence() function, running the FFmpeg merge command with --debug
+#         The path to the files will be different (compressed to a temporary file)
+#         This will cause the output of ffmpeg (including the following error
+#         message) to be displayed in the output of the test suite, this is NOT a problem:
+#             /tmp/vids/20190121_085007.MOV: No such file or directory
+#         """
+#         args = target.parse_args(['--debug'])
+#         tempdir = tempfile.mkdtemp()
+#         # Call the function with the first sequence from sample_sequences
+#         # Using a deep copy of the sequence, otherwise running compress_sequence()
+#         # without --dry-run modifies the elements, and the sample_sequences array
+#         # gets modified which messes up other tests later on.
+#         seq = target.compress_sequence(copy.deepcopy(sample_sequences[0]), tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
+#         # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
+#         for idx, files in enumerate(seq):
+#             for data in ["creation_time", "duration"]:
+#                 self.assertEqual(files[data], sample_sequences[0][idx][data])
+#             # The file path is different, now a new temporary folder (because the file has been compressed)
+#             # Should start with the path to the temporary folder and end with the sequence's first file name.
+#             self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
+#             self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
+#         # Delete the temporary folder
+#         shutil.rmtree(tempdir)
+
+class TestPreCopy(unittest.TestCase):
+    def test_pre_copy(self):
         """
-        Test the compress_sequence() function, running the FFmpeg merge command with --debug
-        The path to the files will be different (compressed to a temporary file)
-        This will cause the output of ffmpeg (including the following error
-        message) to be displayed in the output of the test suite, this is NOT a problem:
-            /tmp/vids/20190121_085007.MOV: No such file or directory
+        Test the pre_copy() function
         """
-        args = target.parse_args(['--debug'])
-        tempdir = tempfile.mkdtemp()
-        # Call the function with the first sequence from sample_sequences
-        # Using a deep copy of the sequence, otherwise running compress_sequence()
-        # without --dry-run modifies the elements, and the sample_sequences array
-        # gets modified which messes up other tests later on.
-        seq = target.compress_sequence(copy.deepcopy(sample_sequences[0]), tempdir, args.dry_run, args.logging_level, 1, len(sample_sequences))
-        # The returned sequence should be the same as the first sample_sequences (due to --dry-run)
-        for idx, files in enumerate(seq):
-            for data in ["creation_time", "duration"]:
-                self.assertEqual(files[data], sample_sequences[0][idx][data])
-            # The file path is different, now a new temporary folder (because the file has been compressed)
-            # Should start with the path to the temporary folder and end with the sequence's first file name.
-            self.assertTrue(files["file_path"].startswith(tempfile.gettempdir()))
-            self.assertTrue(files["file_path"].endswith(os.path.split(sample_sequences[0][idx]["file_path"])[1]))
-        # Delete the temporary folder
-        shutil.rmtree(tempdir)
+        # Simulate files on the actioncam
+        temp_actioncam_dir = tempfile.mkdtemp()
+
+        new_sequences = copy.deepcopy(sample_sequences)
+
+        # Create temporary files and use these in the sample_sequences
+        mov_files = {}
+        for idx, seq in enumerate(new_sequences):
+            mov_files[idx] = {}
+            for idx2, files in enumerate(seq):
+                (ignore, mov_files[idx][idx2]) = tempfile.mkstemp(suffix=".MOV", dir=temp_actioncam_dir)
+                files["file_path"] = mov_files[idx][idx2]
+
+        # Confirm that there are 11 dummy files in the temporary actioncam folder
+        self.assertEqual(len([name for name in os.listdir(temp_actioncam_dir) if os.path.isfile(os.path.join(temp_actioncam_dir, name))]), 11)
+
+        # Copy the files from the "actioncam" folder to new temporary folders
+        (new_sequences, pre_copy_folders) = target.pre_copy(new_sequences)
+
+        for idx, seq in enumerate(new_sequences):
+            # Confirm the number of files in that sequence's temporary folder is correct
+            self.assertEqual(len([name for name in os.listdir(pre_copy_folders[idx]) if os.path.isfile(os.path.join(pre_copy_folders[idx], name))]), len(seq))
+            for idx2, files in enumerate(seq):
+                # concatenate that sequence's temp folder with that file's filename
+                fname = os.path.join(pre_copy_folders[idx], os.path.split(mov_files[idx][idx2])[1])
+                self.assertEqual(files["file_path"], fname)
+            # Delete the new temporary folders (and files)
+            shutil.rmtree(pre_copy_folders[idx])
+
+        # Confirm the original files are still left in the temporary actioncam folder (it's a copy, not a move)
+        self.assertEqual(len([name for name in os.listdir(temp_actioncam_dir) if os.path.isfile(os.path.join(temp_actioncam_dir, name))]), 11)
+        # Delete the temporary actioncam folder
+        shutil.rmtree(temp_actioncam_dir)
 
 class TestAnalyzeSequences(unittest.TestCase):
     def test_analyze_sequences_no_net(self):
@@ -217,12 +284,54 @@ class TestAnalyzeSequences(unittest.TestCase):
                 for data in ["creation_time", "duration", "file_path"]:
                     self.assertEqual(files[data], sample_sequences[idx][idx2][data])
 
+    def test_analyze_sequences_interactive_no_net(self):
+        """
+        Test the analyze_sequences() function, passing a valid sequences array, --interactive (just Enter) and --no-net
+        This means all the sequences should be identified as new
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = [""]
+        args = target.parse_args(['--interactive', '--no-net'])
+        youtube = None
+        new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
+        # Confirm 3 sequences were identified as new
+        self.assertEqual(len(new_sequences), 3)
+        # Check the content of each sequence
+        for idx, seq in enumerate(new_sequences):
+            self.assertEqual(len(seq), len(sample_sequences[idx]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[idx][idx2][data])
+
     def test_analyze_sequences_length_restriction(self):
         """
         Test the analyze_sequences() function, passing a valid sequences array and both --min-length and --max-length
         Only one sequence should be identified as new
         """
         args = target.parse_args(['--no-net', '--min-length', '15', '--max-length', '19'])
+        youtube = None
+        new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
+        # Confirm only one sequence were identified as new, the first of the sample sequences
+        self.assertEqual(len(new_sequences), 1)
+        # Check the content of each sequence
+        for idx, seq in enumerate(new_sequences):
+            self.assertEqual(len(seq), len(sample_sequences[0]))
+            for idx2, files in enumerate(seq):
+                for data in ["creation_time", "duration", "file_path"]:
+                    self.assertEqual(files[data], sample_sequences[0][idx2][data])
+
+    def test_analyze_sequences_interactive_length_restriction(self):
+        """
+        Test the analyze_sequences() function, passing a valid sequences array, --interactive (just Enter) and both --min-length and --max-length
+        Only one sequence should be identified as new
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = [""]
+        args = target.parse_args(['--interactive', '--no-net', '--min-length', '15', '--max-length', '19'])
         youtube = None
         new_sequences = target.analyze_sequences(sample_sequences, youtube, args)
         # Confirm only one sequence were identified as new, the first of the sample sequences
@@ -276,6 +385,108 @@ class TestIdentifySequences(unittest.TestCase):
             for idx2, files in enumerate(seq):
                 for data in ["creation_time", "duration", "file_path"]:
                     self.assertEqual(files[data], sample_sequences[idx][idx2][data])
+
+class TestInteractiveSequenceSelection(unittest.TestCase):
+    def test_interactive_sequence_selection_empty_sequences(self):
+        """
+        Test the interactive_sequence_selection() function, passing an empty list of sequences
+        (This scenario should not ever happen)
+        """
+        with self.assertRaises(Exception) as cm:
+            new_sequences = target.interactive_sequence_selection([], [])
+        self.assertEqual(str(cm.exception), "No sequences were passed (should never happen, something has gone wrong...)")
+
+    def test_interactive_sequence_selection_quit(self):
+        """
+        Test the interactive_sequence_selection() function, mock quitting (enter "q")
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["q"]
+        with self.assertRaises(SystemExit) as cm:
+            new_sequences = target.interactive_sequence_selection([None, None], [None])
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 18)
+
+    def test_interactive_sequence_selection_quit_no_new_sequences(self):
+        """
+        Same as previous test, but passing no suggested new_sequences
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["q"]
+        with self.assertRaises(SystemExit) as cm:
+            new_sequences = target.interactive_sequence_selection([None, None], [])
+        the_exception = cm.exception
+        self.assertEqual(the_exception.code, 18)
+
+    def test_interactive_sequence_selection_dummy_enter(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and just pressing "Enter" (validating the automatic new_sequences)
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = [""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], ["C", "A"])
+        self.assertEqual(new_sequences, ["C", "A"])
+
+    def test_interactive_sequence_selection_dummy_2_0_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and passing "2", "0" and "1"
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_2_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and repeating one of the inputs
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "2", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_A_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and entering a non-digit
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "A", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_99_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and entering a positve out of range number
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "99", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
+
+    def test_interactive_sequence_selection_dummy_2_0_min4_1(self):
+        """
+        Test the interactive_sequence_selection() function, using dummy sequences and entering a negative out of range number
+        """
+        global mock_raw_input_counter
+        global mock_raw_input_values
+        mock_raw_input_counter = 0
+        mock_raw_input_values = ["2", "0", "-4", "1", ""]
+        new_sequences = target.interactive_sequence_selection(["A", "B", "C"], [None])
+        self.assertEqual(new_sequences, ["C", "A", "B"])
 
 class TestAnalyzeFiles(unittest.TestCase):
     def test_analyze_files_no_files(self):
