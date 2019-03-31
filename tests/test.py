@@ -16,9 +16,24 @@ import tempfile
 import shutil
 import os
 import copy
+import socket
 
 sys.path.append('.')
 target = __import__("actioncam-upload")
+
+# Check if we're connected to the Internet
+def is_connected():
+    try:
+        # see if we can resolve the host name -- tells us if there is
+        # a DNS listening
+        host = socket.gethostbyname("duckduckgo.com")
+        # connect to the host -- tells us if the host is actually
+        # reachable
+        s = socket.create_connection((host, 80), 2)
+        return True
+    except:
+        pass
+    return False
 
 # Used to test manual entry when using the --interactive flag
 mock_raw_input_counter = 0
@@ -743,7 +758,10 @@ class TestInitMain(unittest.TestCase):
             # Expect the script to throw an Exception since these are not real MOV files
             with self.assertRaises(Exception) as cm:
                 target.init()
-            self.assertEqual(str(cm.exception), "I found no duration")
+            if is_connected():
+                self.assertEqual(str(cm.exception), "I found no duration")
+            else:
+                self.assertEqual(str(cm.exception), "Unable to find the server at www.googleapis.com")
         else:
             # Expect the script to throw an Exception since these are not real MOV files
             with self.assertRaises(SystemExit) as cm:
