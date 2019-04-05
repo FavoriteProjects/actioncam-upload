@@ -299,6 +299,16 @@ class TestAnalyzeSequences(unittest.TestCase):
                 for data in ["creation_time", "duration", "file_path"]:
                     self.assertEqual(files[data], sample_sequences[idx][idx2][data])
 
+    def test_analyze_sequences_empty_sequence(self):
+        """
+        Test the analyze_sequences() function, passing an invalid sequences array
+        """
+        args = target.parse_args(['--no-net'])
+        youtube = None
+        with self.assertRaises(Exception) as cm:
+            new_sequences = target.analyze_sequences([[]], youtube, args)
+        self.assertEqual(str(cm.exception), "No files in sequence (should never happen, something has gone wrong...)")
+
     def test_analyze_sequences_interactive_no_net(self):
         """
         Test the analyze_sequences() function, passing a valid sequences array, --interactive (just Enter) and --no-net
