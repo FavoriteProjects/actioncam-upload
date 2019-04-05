@@ -624,6 +624,17 @@ class TestDeleteTemporaryFiles(unittest.TestCase):
         target.delete_temporary_files([], None, None, None, args, tempdir, [])
         self.assertFalse(os.path.isdir(tempdir))
 
+    def test_delete_temporary_files_merged_files_no_compression(self):
+        """
+        Test the delete_temporary_files() function deletes the temporary merged file
+        """
+        # target.delete_temporary_files(seq, file_to_upload, idx, num_sequences, args, tempdir, pre_copy_folders)
+        args = target.parse_args(["--no-compression"])
+        (ignore, file_to_upload) = tempfile.mkstemp(suffix=".MOV")
+        self.assertTrue(os.path.exists(file_to_upload))
+        target.delete_temporary_files([[], []], file_to_upload, 0, 2, args, None, [])
+        self.assertFalse(os.path.exists(file_to_upload))
+
 class TestGetSequenceTitle(unittest.TestCase):
     def test_get_sequence_title(self):
         """
