@@ -612,6 +612,18 @@ class TestDetectFolder(unittest.TestCase):
         self.assertEqual(the_exception.code, 12)
         logger.disabled = False
 
+class TestDeleteTemporaryFiles(unittest.TestCase):
+    def test_delete_temporary_files_compressed_files(self):
+        """
+        Test the delete_temporary_files() function deletes the temporary folder
+        where compressed files would be placed in
+        """
+        args = target.parse_args([])
+        tempdir = tempfile.mkdtemp()
+        self.assertTrue(os.path.isdir(tempdir))
+        target.delete_temporary_files([], None, None, None, args, tempdir, [])
+        self.assertFalse(os.path.isdir(tempdir))
+
 class TestGetSequenceTitle(unittest.TestCase):
     def test_get_sequence_title(self):
         """
